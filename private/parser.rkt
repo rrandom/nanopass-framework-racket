@@ -6,7 +6,7 @@
 
 (require "nano-syntax-dispatch.rkt"
          racket/trace
-         (only-in "helpers.rkt" define-who np-parse-fail-token)
+         (only-in "helpers.rkt" define-who np-parse-fail-token syntax->source-info)
          (for-syntax racket/syntax
                      syntax/stx
                      (except-in racket/base syntax/loc)
@@ -106,7 +106,11 @@
                 (parse-or
                   (on-error
                     (if at-top-parse?
-                        (error who "invalid syntax ~s" s-exp)
+                        (let ([s-exp-datum (if (syntax? s-exp) (syntax->datum s-exp) s-exp)]
+                              [source-info (if (syntax? s-exp) (syntax->source-info s-exp) #f)])
+                          (if source-info
+                              (error who "invalid syntax ~s\n  at ~a" s-exp-datum source-info)
+                              (error who "invalid syntax ~s" s-exp-datum)))
                         np-parse-fail-token))
                   #,@(map make-nonterm-clause nonterm-nonimp-alt*)
                   (if (pair? s-exp)

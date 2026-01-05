@@ -592,11 +592,17 @@
                           ; we could raise a compile time error here, otherwise we have to rely
                           ; on the runtime error
                           (quasisyntax/loc x
-                            (error '#,(pass-desc-name pass-desc)
-                                   "no matching clause for input ~s in processor ~s from ~s"
-                                   '#,alt-syntax
-                                   '#,(pdesc-name pdesc)
-                                   #,fml)))))])))
+                            (let* ([fml-datum #,fml]
+                                   [source-info (if (syntax? fml-datum)
+                                                   (syntax->source-info fml-datum)
+                                                   #f)]
+                                   [base-msg (format "no matching clause for input ~s in processor ~s from ~s"
+                                                    '#,alt-syntax
+                                                    '#,(pdesc-name pdesc)
+                                                    fml-datum)])
+                              (if source-info
+                                  (error '#,(pass-desc-name pass-desc) "~a\n  at ~a" base-msg source-info)
+                                  (error '#,(pass-desc-name pass-desc) "~a" base-msg)))))))])))
 
           (define gen-binding (lambda (t v) (if (eq? t v) '() (list #`(#,t #,v)))))
           (define gen-t (lambda (acc) (if (identifier? acc) acc (generate-temporary))))
@@ -1336,10 +1342,16 @@
                                 [else #,(if else-id
                                             #`(#,else-id) 
                                             (quasisyntax/loc x
-                                              (error '#,(pass-desc-name pass-desc)
-                                                #,(format "found ~~s given to processor, expected ~a pattern"
-                                                          (maybe-syntax->datum itype))
-                                                #,fml)))]))]))))))))))
+                                              (let* ([fml-datum #,fml]
+                                                     [tag (nanopass-record-tag #,fml)]
+                                                     [source-info (if (syntax? fml-datum)
+                                                                     (syntax->source-info fml-datum)
+                                                                     #f)]
+                                                     [base-msg (format "found ~s (tag: ~s) given to processor, expected ~a pattern"
+                                                                      fml-datum tag '#,(maybe-syntax->datum itype))])
+                                                (if source-info
+                                                    (error '#,(pass-desc-name pass-desc) "~a\n  at ~a" base-msg source-info)
+                                                    (error '#,(pass-desc-name pass-desc) "~a" base-msg)))))]))]))))))))))
 
     ; build-call and find-proc need to work in concert, so they are located near eachother
     ; to increase the chance that we actually remember to alter both of them when the
@@ -1573,8 +1585,14 @@
                 (let ([otype (or maybe-otype (language-entry-ntspec olang))])
                   (with-syntax ([checked-body
                                   #`(unless #,(generate-output-check otype #'x (language-ntspecs olang))
-                                      (error '#,(pass-desc-name pass-desc)
-                                        "expected ~s but got ~s" '#,(datum->syntax #'* otype) x))])
+                                      (let* ([x-datum x]
+                                             [source-info (if (syntax? x-datum)
+                                                             (syntax->source-info x-datum)
+                                                             #f)]
+                                             [base-msg (format "expected ~s but got ~s" '#,(datum->syntax #'* otype) x-datum)])
+                                        (if source-info
+                                            (error '#,(pass-desc-name pass-desc) "~a\n  at ~a" base-msg source-info)
+                                            (error '#,(pass-desc-name pass-desc) "~a" base-msg))))])
                     (if (null? xval*)
                         #`(let ([x #,(generate-body olang otype)])
                             checked-body

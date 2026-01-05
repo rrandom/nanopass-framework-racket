@@ -566,15 +566,22 @@
 
 (module helper racket/base
   (provide record-check)
+  (require syntax/srcloc)
+  (define (syntax->source-info stx)
+    (and (source-location-known? stx)
+         (source-location->string stx)))
   (define ((record-check pred? fld msg name who alt) x)
     (unless (pred? x)
-      (if msg
-          (error who
-                 "expected ~s but received ~s in field ~s of ~s from ~a"
-                 name x fld alt msg)
-          (error who
-                 "expected ~s but received ~s in field ~s of ~s"
-                 name x fld alt)))))
+      (let* ([x-datum (if (syntax? x) (syntax->datum x) x)]
+             [source-info (if (syntax? x) (syntax->source-info x) #f)]
+             [base-msg (if msg
+                          (format "expected ~s but received ~s in field ~s of ~s from ~a"
+                                  name x-datum fld alt msg)
+                          (format "expected ~s but received ~s in field ~s of ~s"
+                                  name x-datum fld alt))])
+        (if source-info
+            (error who "~a\n  at ~a" base-msg source-info)
+            (error who "~a" base-msg))))))
   
 (require (for-template 'helper))
     

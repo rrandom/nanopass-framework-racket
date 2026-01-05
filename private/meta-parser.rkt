@@ -246,9 +246,14 @@
               (define parse-name parse-proc) ...
               (case ntspec-name
                 [(ntspec-id) (parse-name stx #t (not input?) #f)] ...
-                [else (error '#,lang-name
-                             "unrecognized nonterminal passed to meta parser ~s"
-                             ntspec-name)]))))))))
+                [else (let* ([source-info (if (syntax? stx)
+                                              (syntax->source-info stx)
+                                              #f)]
+                             [base-msg (format "unrecognized nonterminal passed to meta parser ~s"
+                                              ntspec-name)])
+                        (if source-info
+                            (error '#,lang-name "~a\n  at ~a" base-msg source-info)
+                            (error '#,lang-name "~a" base-msg)))]))))))))
 
 
 ;; used to handle output of meta-parsers
