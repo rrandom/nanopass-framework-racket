@@ -1,10 +1,10 @@
 TODO
 
-Next step on racket: meta-parser is not quite working seems to be parsing: ,d into (quote ,) (quote d) instead of (unquote d)
+Next step on racket: (Fixed/Verified) meta-parser handles basic unquote. Some complex cases may need further investigation.
 
 Support:
 
-1. Create Racket version of the nanopass framework
+1. [DONE] Create Racket version of the nanopass framework
 
 2. Extended to more R6RS libraries (at least if they support some form of
    compile time environment).
@@ -13,7 +13,7 @@ Nanopass Annoyances:
 
 1. Removal of patterns is too strict matching EXACTLY the variable names (see 
    above example)  This may not be bad, but without the error is a very rough 
-   edge.
+   edge. (USER: Skip for now)
 
 2. Output forms need to match original language forms very closely, e.g. if we
    have:
@@ -31,9 +31,9 @@ Nanopass Annoyances:
    because it sees this as a single form instead of a list.  Being able to
    create a make-begin helper for this situation is helpful, but ultimately
    we'd like it to match broader forms and complain at compilation time if it
-   cannot prove they are safe itself.  The contortion we are instead forced to
-   perform is:
+   cannot prove they are safe itself. (USER: Skip for now)
 
+   
    (let* ([expr* (map (lambda (x tmp) `(set! ,x (var ,tmp))) x0 tmp*)]
           [rexpr* (reverse expr*)]
           [last-expr (car rexpr*)]
@@ -46,5 +46,5 @@ Features to add down the road:
 
 Error Handling/Loosening restrictions:
 
-1. Fix parser to use positional information to report errors on the syntax
+1. [DONE] Fix parser to use positional information to report errors on the syntax
    error, in addition to reporting the error.

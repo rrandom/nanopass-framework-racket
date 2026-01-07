@@ -28,7 +28,7 @@
                      "syntaxconvert.rkt"
                      "meta-parser.rkt"
                      "pass-helper.rkt")
-         (only-in "helpers.rkt" nanopass-record-tag nanopass-record?)
+         (only-in "helpers.rkt" nanopass-record-tag nanopass-record? syntax->source-info)
          racket/list
          racket/trace
          racket/splicing)
@@ -39,18 +39,18 @@
 ;; have a separate pass-lambda form, or that we'll loosen up the body further to return
 ;; multiple values even when they aren't specified. For now, this is moth-balled.
 #;(define-syntax with-output-language
-(lambda (x)
-  (syntax-case x ()
-    [(k (lang type) b b* ...)
-      (with-syntax ([pass (datum->syntax #'k 'pass)])
-        #'(let ()
-            (define-pass pass : * () -> (lang type) () (begin b b* ...))
-            (pass)))]
-    [(k lang b b* ...)
-      (with-syntax ([pass (datum->syntax #'k 'pass)])
-        #'(let ()
-            (define-pass pass : * () -> lang  () (begin b b* ...))
-            (pass)))])))
+    (lambda (x)
+      (syntax-case x ()
+        [(k (lang type) b b* ...)
+         (with-syntax ([pass (datum->syntax #'k 'pass)])
+           #'(let ()
+               (define-pass pass : * () -> (lang type) () (begin b b* ...))
+               (pass)))]
+        [(k lang b b* ...)
+         (with-syntax ([pass (datum->syntax #'k 'pass)])
+           #'(let ()
+               (define-pass pass : * () -> lang  () (begin b b* ...))
+               (pass)))])))
 
 (define-syntax (with-output-language x)
   (syntax-parse x
@@ -83,20 +83,20 @@
                         (syntax-e #'lang)
                         (pretty-format/write
                          (language->s-expression-internal olang))))))]
-      [(id lang b b* ...)
-       #:with in-context (datum->syntax #'id 'in-context)
-       (let* ([olang-pair (lookup-language 'with-output-language "unrecognized language name" #'lang)]
-              [olang (and olang-pair (car olang-pair))]
-              [meta-parser (and olang-pair (cdr olang-pair))])
-         (unless (language? olang)
-           (raise-syntax-error 'with-output-language "unrecognized language" #'lang))
-         (unless (procedure? meta-parser)
-           (raise-syntax-error 'with-output-language "missing meta parser for language" #'lang))
-         (syntax-property
-          #`(splicing-let-syntax
-             ([in-context '#,(make-in-context-transformer #'id olang
-                                                          meta-parser)])
-             b b* ...)
+    [(id lang b b* ...)
+     #:with in-context (datum->syntax #'id 'in-context)
+     (let* ([olang-pair (lookup-language 'with-output-language "unrecognized language name" #'lang)]
+            [olang (and olang-pair (car olang-pair))]
+            [meta-parser (and olang-pair (cdr olang-pair))])
+       (unless (language? olang)
+         (raise-syntax-error 'with-output-language "unrecognized language" #'lang))
+       (unless (procedure? meta-parser)
+         (raise-syntax-error 'with-output-language "missing meta parser for language" #'lang))
+       (syntax-property
+        #`(splicing-let-syntax
+              ([in-context '#,(make-in-context-transformer #'id olang
+                                                           meta-parser)])
+            b b* ...)
         'mouse-over-tooltips
         (vector #'lang
                 (- (syntax-position #'lang) 1)
@@ -206,25 +206,25 @@
                                          [(id id* ...) #'(id ...)])
                              #`(let ([result #f])
                                  (trace-let name ([tid (#,iunparser id #t)] [xargs id*] ...)
-                                   (let-values ([(ot xvals ...) (tpass id id* ...)])
-                                     (set! result (list ot xvals ...))
-                                     (values (#,ounparser ot #t) xvals ...)))
+                                            (let-values ([(ot xvals ...) (tpass id id* ...)])
+                                              (set! result (list ot xvals ...))
+                                              (values (#,ounparser ot #t) xvals ...)))
                                  (apply values result)))
                            (with-syntax ([(xvals ...) (generate-temporaries #'(xtra ...))]
                                          [(tid xargs ...) (generate-temporaries #'(id ...))]
                                          [(id id* ...) #'(id ...)])
                              #`(trace-let name ([tid (#,iunparser id #t)] [xargs id*] ...)
-                                 (tpass id id* ...))))
+                                          (tpass id id* ...))))
                        (if ounparser
                            (with-syntax ([(ot xvals ...) (generate-temporaries #'(name xtra ...))])
                              #`(let ([result #f])
                                  (trace-let name ([id id] ...)
-                                   (let-values ([(ot xvals ...) (tpass id ...)])
-                                     (set! result (list ot xvals ...))
-                                     (values (#,ounparser ot #t) xvals ...)))
+                                            (let-values ([(ot xvals ...) (tpass id ...)])
+                                              (set! result (list ot xvals ...))
+                                              (values (#,ounparser ot #t) xvals ...)))
                                  (apply values result)))
                            #`(trace-let name ([id id] ...)
-                               (tpass id ...))))))))])))
+                                        (tpass id ...))))))))])))
 
 (define-syntax define-pass
   (syntax-rules ()
@@ -246,7 +246,7 @@
                   [_ #f]))
             (andmap identifier? (syntax->list #'(fml ...))))
        #'(x-define-pass name ?colon ilang (fml ...) ?arrow olang (xval ...)
-           (expand-modifier echo) . more)])))
+                        (expand-modifier echo) . more)])))
 
 (define-syntax x-define-pass
   (lambda (x)
@@ -261,8 +261,8 @@
 
     (define-struct pclause
       (lhs guard id rhs-arg* rhs-lambda
-        (used? #:mutable)
-        (related-alt* #:mutable))
+           (used? #:mutable)
+           (related-alt* #:mutable))
       #:prefab
       #:constructor-name $make-pclause)
     (define make-pclause
@@ -291,11 +291,11 @@
         result)
       (with-syntax ([lambda-expr (make-processor-lambda pass-desc maybe-imeta-parser maybe-ometa-parser pdesc)]
                     [name (pdesc-name pdesc)])
-        (echo-processor    
+        (echo-processor
          #`(define name
              #,(if (pdesc-trace? pdesc)
                    (let ([maybe-ilang (pass-desc-maybe-ilang pass-desc)]
-                         [maybe-olang (pass-desc-maybe-olang pass-desc)])    
+                         [maybe-olang (pass-desc-maybe-olang pass-desc)])
                      (let ([iunparser (and maybe-ilang (pdesc-maybe-itype pdesc)
                                            (let ([ilang (language-name maybe-ilang)])
                                              (format-id ilang "unparse-~a" ilang)))]
@@ -357,7 +357,7 @@
                                                     maybe-otype maybe-olang maybe-ometa-parser #`(begin #,@forms)))
                         forms))
                   (if (let ([maybe-itype (pdesc-maybe-itype pdesc)])
-                        (and maybe-itype 
+                        (and maybe-itype
                              (nonterm-id->ntspec? maybe-itype
                                                   (language-ntspecs
                                                    (pass-desc-maybe-ilang pass-desc)))))
@@ -370,7 +370,7 @@
                         #`(#,@defn*
                            #,(make-processor-clauses pass-desc tfml maybe-imeta-parser maybe-ometa-parser pdesc body)))
                       (pdesc-body pdesc)))))))
-  
+
     (define make-processor-clauses
       (lambda (pass-desc tfml imeta-parser maybe-ometa-parser pdesc cl*)
         (let* ([itype (pdesc-maybe-itype pdesc)] ; HERE
@@ -389,33 +389,33 @@
                   #;(printf "nanometa: ~s\n" nm)
                   (let f ([nrec* (nano-meta-fields nm)] [fml* '()])
                     (foldr
-                      (rec g
-                           (lambda (nrec fml*)
-                             (cond
-                               [(nano-dots? nrec) (g (nano-dots-x nrec) fml*)]
-                               [(nano-unquote? nrec) (cons (nano-unquote-x nrec) fml*)]
-                               [(nano-cata? nrec)
-                                (let ([fml* (append
-                                              (let ([outid* (nano-cata-outid* nrec)])
-                                                (if (and maybe-olang (not (null? outid*))
-                                                         (eq? (maybe-syntax->datum (car outid*)) '*))
-                                                    (cdr outid*)
-                                                    outid*))
-                                              fml*)]
-                                      [maybe-inid* (nano-cata-maybe-inid* nrec)])
-                                  (if (and maybe-inid*
-                                           (let ([id (car maybe-inid*)])
-                                             (and (identifier? id)
-                                                  (not (memf (lambda (fml)
-                                                               (free-identifier=? fml id))
-                                                             fml*)))))
-                                      (cons (car maybe-inid*) fml*)
-                                      fml*))]
-                               [(nano-meta? nrec) (f (nano-meta-fields nrec) fml*)]
-                               [(list? nrec) (f nrec fml*)]
-                               [(nano-quote? nrec) (raise-syntax-error who "quoted terminals currently unsupported in match patterns" (nano-quote-x nrec))]
-                               [else (error who "unrecognized nano-rec ~s" nrec)])))
-                      fml* nrec*))))
+                     (rec g
+                       (lambda (nrec fml*)
+                         (cond
+                           [(nano-dots? nrec) (g (nano-dots-x nrec) fml*)]
+                           [(nano-unquote? nrec) (cons (nano-unquote-x nrec) fml*)]
+                           [(nano-cata? nrec)
+                            (let ([fml* (append
+                                         (let ([outid* (nano-cata-outid* nrec)])
+                                           (if (and maybe-olang (not (null? outid*))
+                                                    (eq? (maybe-syntax->datum (car outid*)) '*))
+                                               (cdr outid*)
+                                               outid*))
+                                         fml*)]
+                                  [maybe-inid* (nano-cata-maybe-inid* nrec)])
+                              (if (and maybe-inid*
+                                       (let ([id (car maybe-inid*)])
+                                         (and (identifier? id)
+                                              (not (memf (lambda (fml)
+                                                           (free-identifier=? fml id))
+                                                         fml*)))))
+                                  (cons (car maybe-inid*) fml*)
+                                  fml*))]
+                           [(nano-meta? nrec) (f (nano-meta-fields nrec) fml*)]
+                           [(list? nrec) (f nrec fml*)]
+                           [(nano-quote? nrec) (raise-syntax-error who "quoted terminals currently unsupported in match patterns" (nano-quote-x nrec))]
+                           [else (error who "unrecognized nano-rec ~s" nrec)])))
+                     fml* nrec*))))
               (define (helper lhs guard rhs rhs*)
                 (let ([nrec (imeta-parser (maybe-syntax->datum itype) lhs #t)])
                   (unless (nano-meta? nrec)
@@ -458,12 +458,12 @@
                     [(= level 0) (add-maybe arg #`(#,proc #,arg #,@args))]
                     [(= level 1) #`(map (lambda (m) #,(add-maybe #'m #`(#,proc m #,@args))) #,arg)]
                     [else
-                      (genmap
-                        #`(lambda (x) (map (lambda (m) #,(add-maybe #'m #`(#,proc m #,@args))) x))
-                        (- level 1)
-                        #f ; once we've applied the maybe turn it off, since we can have a
-                        ; list of maybes but not maybe of a list.
-                        arg '())])))
+                     (genmap
+                      #`(lambda (x) (map (lambda (m) #,(add-maybe #'m #`(#,proc m #,@args))) x))
+                      (- level 1)
+                      #f ; once we've applied the maybe turn it off, since we can have a
+                      ; list of maybes but not maybe of a list.
+                      arg '())])))
               (define-who process-alt
                 (lambda (in-altsyn in-altrec out-altrec)
                   (define process-alt-field
@@ -471,21 +471,21 @@
                       (if (and (nonterminal-meta? fname intspec*)
                                (nonterminal-meta? ofname maybe-ontspec*))
                           (let ([callee-pdesc
-                                  (find-proc (format "process-alt, callee-pdesc 1 -- ~s" (syntax->datum in-altsyn)) pass-desc (pdesc-name pdesc)
-                                             (spec-type (find-spec fname ilang))
-                                             maybe-olang
-                                             (spec-type (find-spec ofname maybe-olang)) #t
-                                             (lambda (id* dflt*)
-                                               #;(printf "testing: ~s, ~s, ~s" id* dflt* fml*)
-                                               (let ([t (andmap
-                                                          (lambda (req)
-                                                                  (memf (lambda (x) (bound-identifier=? req x)) fml*))
-                                                          (take id* (- (length id*) (length dflt*))))])
-                                                    #;(printf " -- ~s\n" t)
-                                                    t))
-                                             (lambda (dflt*)
-                                               ; punting when there are return values for now
-                                               (null? dflt*)))])
+                                 (find-proc (format "process-alt, callee-pdesc 1 -- ~s" (syntax->datum in-altsyn)) pass-desc (pdesc-name pdesc)
+                                            (spec-type (find-spec fname ilang))
+                                            maybe-olang
+                                            (spec-type (find-spec ofname maybe-olang)) #t
+                                            (lambda (id* dflt*)
+                                              #;(printf "testing: ~s, ~s, ~s" id* dflt* fml*)
+                                              (let ([t (andmap
+                                                        (lambda (req)
+                                                          (memf (lambda (x) (bound-identifier=? req x)) fml*))
+                                                        (take id* (- (length id*) (length dflt*))))])
+                                                #;(printf " -- ~s\n" t)
+                                                t))
+                                            (lambda (dflt*)
+                                              ; punting when there are return values for now
+                                              (null? dflt*)))])
                             (genmap (pdesc-name callee-pdesc) level maybe? #`(#,aname #,fml)
                                     (let ([id* (cdr (pdesc-fml* callee-pdesc))]
                                           [dflt* (pdesc-dflt* callee-pdesc)])
@@ -499,18 +499,18 @@
                                                    (list-tail id* n)
                                                    dflt*))))))
                           (let ([callee-pdesc
-                                  (find-proc "process-alt, callee-pdesc 2" pass-desc (pdesc-name pdesc)
-                                             (spec-type (find-spec fname ilang))
-                                             maybe-olang
-                                             (spec-type (find-spec ofname maybe-olang)) #f
-                                             (lambda (id* dflt*)
-                                               (andmap
-                                                 (lambda (req)
-                                                   (memf (lambda (x) (bound-identifier=? req x)) fml*))
-                                                 (take id* (- (length id*) (length dflt*)))))
-                                             (lambda (dflt*)
-                                               ; punting when there are return values for now
-                                               (null? dflt*)))])
+                                 (find-proc "process-alt, callee-pdesc 2" pass-desc (pdesc-name pdesc)
+                                            (spec-type (find-spec fname ilang))
+                                            maybe-olang
+                                            (spec-type (find-spec ofname maybe-olang)) #f
+                                            (lambda (id* dflt*)
+                                              (andmap
+                                               (lambda (req)
+                                                 (memf (lambda (x) (bound-identifier=? req x)) fml*))
+                                               (take id* (- (length id*) (length dflt*)))))
+                                            (lambda (dflt*)
+                                              ; punting when there are return values for now
+                                              (null? dflt*)))])
                             (if callee-pdesc
                                 (genmap (pdesc-name callee-pdesc) level maybe? #`(#,aname #,fml)
                                         (let ([id* (cdr (pdesc-fml* callee-pdesc))]
@@ -541,12 +541,12 @@
                             [in-field-name* (pair-alt-field-names in-altrec)]
                             [out-field-name* (pair-alt-field-names out-altrec)]
                             [out-field*
-                              (map process-alt-field
-                                   in-field-level*
-                                   in-field-maybe*
-                                   in-field-name*
-                                   in-acc*
-                                   out-field-name*)])
+                             (map process-alt-field
+                                  in-field-level*
+                                  in-field-maybe*
+                                  in-field-name*
+                                  in-acc*
+                                  out-field-name*)])
                        ; always using the non-checking form here, because we are simply rebuilding;
                        ; TODO: terminals should be checked to be matching from the input language
                        ; to the output language, otherwise a check should be made here or the
@@ -576,33 +576,33 @@
                          alt-code
                          #`(values #,alt-code #,@xval*))))]
                 [else
-                  (let ([alt-syntax (alt-syn alt)])
-                    (let ([oalt (exists-alt?
-                                  alt
-                                  (language-tspecs ilang)
-                                  (nonterm-id->ntspec who maybe-otype maybe-ontspec*)
-                                  (language-tspecs maybe-olang) maybe-ontspec*)])
-                      (if oalt
-                          (let ([alt-code (process-alt alt-syntax alt oalt)]
-                                [xval* (pdesc-xval* pdesc)])
-                            (if (null? xval*)
-                                alt-code
-                                #`(values #,alt-code #,@xval*)))
-                          ; TODO: if there were no user provided clauses for this input alt,
-                          ; we could raise a compile time error here, otherwise we have to rely
-                          ; on the runtime error
-                          (quasisyntax/loc x
-                            (let* ([fml-datum #,fml]
-                                   [source-info (if (syntax? fml-datum)
+                 (let ([alt-syntax (alt-syn alt)])
+                   (let ([oalt (exists-alt?
+                                alt
+                                (language-tspecs ilang)
+                                (nonterm-id->ntspec who maybe-otype maybe-ontspec*)
+                                (language-tspecs maybe-olang) maybe-ontspec*)])
+                     (if oalt
+                         (let ([alt-code (process-alt alt-syntax alt oalt)]
+                               [xval* (pdesc-xval* pdesc)])
+                           (if (null? xval*)
+                               alt-code
+                               #`(values #,alt-code #,@xval*)))
+                         ; TODO: if there were no user provided clauses for this input alt,
+                         ; we could raise a compile time error here, otherwise we have to rely
+                         ; on the runtime error
+                         (quasisyntax/loc x
+                           (let* ([fml-datum #,fml]
+                                  [source-info (if (syntax? fml-datum)
                                                    (syntax->source-info fml-datum)
                                                    #f)]
-                                   [base-msg (format "no matching clause for input ~s in processor ~s from ~s"
+                                  [base-msg (format "no matching clause for input ~s in processor ~s from ~s"
                                                     '#,alt-syntax
                                                     '#,(pdesc-name pdesc)
                                                     fml-datum)])
-                              (if source-info
-                                  (error '#,(pass-desc-name pass-desc) "~a\n  at ~a" base-msg source-info)
-                                  (error '#,(pass-desc-name pass-desc) "~a" base-msg)))))))])))
+                             (if source-info
+                                 (error '#,(pass-desc-name pass-desc) "~a\n  at ~a" base-msg source-info)
+                                 (error '#,(pass-desc-name pass-desc) "~a" base-msg)))))))])))
 
           (define gen-binding (lambda (t v) (if (eq? t v) '() (list #`(#,t #,v)))))
           (define gen-t (lambda (acc) (if (identifier? acc) acc (generate-temporary))))
@@ -633,17 +633,17 @@
               (if (null? elt*)
                   (values #t '() '() '())
                   (let-values
-                    ([(elt-ipred elt-tbinding* elt-ibinding* elt-obinding*)
-                      (process-nano-elt (car elt*) #`(#,(car aname*) #,acc-id)
-                                        (car itype*))]
-                     [(rest-ipred rest-tbinding* rest-ibinding* rest-obinding*)
-                      (process-nano-fields (cdr elt*) acc-id (cdr aname*)
-                                           (cdr itype*))])
+                      ([(elt-ipred elt-tbinding* elt-ibinding* elt-obinding*)
+                        (process-nano-elt (car elt*) #`(#,(car aname*) #,acc-id)
+                                          (car itype*))]
+                       [(rest-ipred rest-tbinding* rest-ibinding* rest-obinding*)
+                        (process-nano-fields (cdr elt*) acc-id (cdr aname*)
+                                             (cdr itype*))])
                     (values
-                      (gen-and elt-ipred rest-ipred)
-                      (append elt-tbinding* rest-tbinding*)
-                      (append elt-ibinding* rest-ibinding*)
-                      (append elt-obinding* rest-obinding*))))))
+                     (gen-and elt-ipred rest-ipred)
+                     (append elt-tbinding* rest-tbinding*)
+                     (append elt-ibinding* rest-ibinding*)
+                     (append elt-obinding* rest-obinding*))))))
 
           (define gen-mvmap
             (lambda (who ids proc arg . args)
@@ -673,37 +673,37 @@
                               (process-nano-elt elt map-t itype)])
                   (let ([ls-t (gen-t acc)])
                     (values
-                      (gen-andmap map-t acc ipred)
-                      (gen-binding ls-t acc)
-                      (map
-                        (lambda (ibinding)
-                          (syntax-case ibinding ()
-                            [(id expr)
-                             (if (and (identifier? #'expr) (eq? map-t #'expr))
-                                 #`(id #,ls-t)
-                                 #`(id (map (lambda (#,map-t)
-                                              #,(if (null? tbinding*) 
-                                                    #'expr
-                                                    #`(let* #,tbinding* expr)))
-                                            #,ls-t)))]))
-                        ibinding*)
-                      (map
-                        (lambda (obinding)
-                          ;; TODO: rather than tearing apart the code we've constructed
-                          ;; in the nano-cata case to support dotted cata, the nano-cata
-                          ;; should be constructed to just build the correct code in the first
-                          ;; place.
-                          (syntax-case obinding ()
-                            [(ids (procexpr var args ...)) ;; contains expr itself
-                             #`(ids ((let ([p (let ([p procexpr]) (lambda (m) (p m args ...)))])
-                                       (lambda (x)
-                                         #,(cond
-                                             [(stx-null? #'ids) #'(begin (for-each p x) (values))]
-                                             [(stx-null? (stx-cdr #'ids)) #'(map p x)]
-                                             [else (gen-mvmap (pass-desc-name pass-desc)
-                                                              #'ids #'p #'x)])))
-                                     var))]))
-                        obinding*)))))))
+                     (gen-andmap map-t acc ipred)
+                     (gen-binding ls-t acc)
+                     (map
+                      (lambda (ibinding)
+                        (syntax-case ibinding ()
+                          [(id expr)
+                           (if (and (identifier? #'expr) (eq? map-t #'expr))
+                               #`(id #,ls-t)
+                               #`(id (map (lambda (#,map-t)
+                                            #,(if (null? tbinding*)
+                                                  #'expr
+                                                  #`(let* #,tbinding* expr)))
+                                          #,ls-t)))]))
+                      ibinding*)
+                     (map
+                      (lambda (obinding)
+                        ;; TODO: rather than tearing apart the code we've constructed
+                        ;; in the nano-cata case to support dotted cata, the nano-cata
+                        ;; should be constructed to just build the correct code in the first
+                        ;; place.
+                        (syntax-case obinding ()
+                          [(ids (procexpr var args ...)) ;; contains expr itself
+                           #`(ids ((let ([p (let ([p procexpr]) (lambda (m) (p m args ...)))])
+                                     (lambda (x)
+                                       #,(cond
+                                           [(stx-null? #'ids) #'(begin (for-each p x) (values))]
+                                           [(stx-null? (stx-cdr #'ids)) #'(map p x)]
+                                           [else (gen-mvmap (pass-desc-name pass-desc)
+                                                            #'ids #'p #'x)])))
+                                   var))]))
+                      obinding*)))))))
 
           (define process-nano-list
             (lambda (elt* acc itype)
@@ -715,53 +715,53 @@
                         (if (nano-dots? elt)
                             (let ([t (gen-t tail-acc)] [n (length (cdr elt*))])
                               (let-values
-                                ([(elt-ipred elt-tbinding* elt-ibinding* elt-obinding*)
-                                  (process-nano-dots (nano-dots-x elt)
-                                                     (if (= n 0)
-                                                         t
-                                                         #`(take #,t (- (length #,t) #,n)))
-                                                     itype)]
-                                 [(rest-ipred rest-tbinding* rest-ibinding*
-                                              rest-obinding* i dots?)
-                                  (helper (cdr elt*)
-                                          (if (= n 0)
-                                              t
-                                              #`(list-tail #,t (- (length #,t) #,n))))])
+                                  ([(elt-ipred elt-tbinding* elt-ibinding* elt-obinding*)
+                                    (process-nano-dots (nano-dots-x elt)
+                                                       (if (= n 0)
+                                                           t
+                                                           #`(take #,t (- (length #,t) #,n)))
+                                                       itype)]
+                                   [(rest-ipred rest-tbinding* rest-ibinding*
+                                                rest-obinding* i dots?)
+                                    (helper (cdr elt*)
+                                            (if (= n 0)
+                                                t
+                                                #`(list-tail #,t (- (length #,t) #,n))))])
                                 (values
-                                  (gen-let1 t tail-acc
-                                            (gen-and elt-ipred rest-ipred))
-                                  (append (gen-binding t tail-acc)
-                                          elt-tbinding* rest-tbinding*)
-                                  (append elt-ibinding* rest-ibinding*)
-                                  (append elt-obinding* rest-obinding*)
-                                  i #t)))
+                                 (gen-let1 t tail-acc
+                                           (gen-and elt-ipred rest-ipred))
+                                 (append (gen-binding t tail-acc)
+                                         elt-tbinding* rest-tbinding*)
+                                 (append elt-ibinding* rest-ibinding*)
+                                 (append elt-obinding* rest-obinding*)
+                                 i #t)))
                             (let ([t (gen-t tail-acc)])
                               (let-values
-                                ([(elt-ipred elt-tbinding* elt-ibinding* elt-obinding*)
-                                  (process-nano-elt elt #`(car #,t) itype)]
-                                 [(rest-ipred rest-tbinding* rest-ibinding*
-                                              rest-obinding* i dots?)
-                                  (helper (cdr elt*) #`(cdr #,t))])
+                                  ([(elt-ipred elt-tbinding* elt-ibinding* elt-obinding*)
+                                    (process-nano-elt elt #`(car #,t) itype)]
+                                   [(rest-ipred rest-tbinding* rest-ibinding*
+                                                rest-obinding* i dots?)
+                                    (helper (cdr elt*) #`(cdr #,t))])
                                 (values
-                                  (gen-let1 t tail-acc
-                                            (gen-and elt-ipred rest-ipred))
-                                  (append (gen-binding t tail-acc)
-                                          elt-tbinding* rest-tbinding*)
-                                  (append elt-ibinding* rest-ibinding*)
-                                  (append elt-obinding* rest-obinding*)
-                                  (+ i 1) dots?))))))))
+                                 (gen-let1 t tail-acc
+                                           (gen-and elt-ipred rest-ipred))
+                                 (append (gen-binding t tail-acc)
+                                         elt-tbinding* rest-tbinding*)
+                                 (append elt-ibinding* rest-ibinding*)
+                                 (append elt-obinding* rest-obinding*)
+                                 (+ i 1) dots?))))))))
               (let ([t (gen-t acc)])
                 (let-values ([(ipred tbinding* ibinding* obinding* i dots?)
                               (helper elt* t)])
                   (values
-                    (gen-let1 t acc
-                              (if dots?
-                                  (if (= i 0)
-                                      ipred
-                                      (gen-and #`(>= (length #,t) #,i) ipred))
-                                  (gen-and #`(= (length #,t) #,i) ipred)))
-                    (append (gen-binding t acc) tbinding*)
-                    ibinding* obinding*)))))
+                   (gen-let1 t acc
+                             (if dots?
+                                 (if (= i 0)
+                                     ipred
+                                     (gen-and #`(>= (length #,t) #,i) ipred))
+                                 (gen-and #`(= (length #,t) #,i) ipred)))
+                   (append (gen-binding t acc) tbinding*)
+                   ibinding* obinding*)))))
 
           (define build-meta-variable-check
             (lambda (id acc itype)
@@ -774,25 +774,25 @@
                                                                           (if (subspec? spec ntspec (language-tspecs ilang) (language-ntspecs ilang))
                                                                               #`(#,(spec-all-pred spec) #,acc)
                                                                               (raise-syntax-error
-                                                                                (maybe-syntax->datum (pass-desc-name pass-desc))
-                                                                                (format
-                                                                                  "expected meta-variable for nonterminal ~s, but got"
-                                                                                  (if (syntax? itype) (maybe-syntax->datum itype) itype))
-                                                                                id)))]
+                                                                               (maybe-syntax->datum (pass-desc-name pass-desc))
+                                                                               (format
+                                                                                "expected meta-variable for nonterminal ~s, but got"
+                                                                                (if (syntax? itype) (maybe-syntax->datum itype) itype))
+                                                                               id)))]
                   [(term-id->tspec? itype (language-tspecs ilang)) =>
                                                                    (lambda (tspec)
                                                                      (raise-syntax-error
-                                                                       (maybe-syntax->datum (pass-desc-name pass-desc))
-                                                                       (format
-                                                                         "expected meta-variable for terminal ~s, but got"
-                                                                         (if (syntax? itype) (maybe-syntax->datum itype) itype))
-                                                                       id))]
+                                                                      (maybe-syntax->datum (pass-desc-name pass-desc))
+                                                                      (format
+                                                                       "expected meta-variable for terminal ~s, but got"
+                                                                       (if (syntax? itype) (maybe-syntax->datum itype) itype))
+                                                                      id))]
                   [else (raise-syntax-error
-                          (maybe-syntax->datum (pass-desc-name pass-desc))
-                          (format
-                            "NANOPASS INTERNAL ERROR: unable to find spec for type ~s"
-                            (if (syntax? itype) (maybe-syntax->datum itype) itype))
-                          id)]))))
+                         (maybe-syntax->datum (pass-desc-name pass-desc))
+                         (format
+                          "NANOPASS INTERNAL ERROR: unable to find spec for type ~s"
+                          (if (syntax? itype) (maybe-syntax->datum itype) itype))
+                         id)]))))
 
           (define process-nano-elt
             (lambda (elt acc itype)
@@ -802,16 +802,16 @@
                    (let-values ([(ipred tbinding* ibinding* obinding*)
                                  (process-nano-meta elt t)])
                      (values
-                       (gen-let1 t acc
-                                 (gen-and
-                                   ;; TODO: if the nt here doesn't have any terminals, then we only
-                                   ;; need to do the tag comparison.
-                                   #;#`(eqv? (nanopass-record-tag #,t) #,(pair-alt-tag (nano-meta-alt elt)))
-                                   #`(#,(pair-alt-pred (nano-meta-alt elt)) #,t)
-                                   ipred))
-                       (append (gen-binding t acc) tbinding*)
-                       ibinding* obinding*)))]
-                [(nano-quote? elt) 
+                      (gen-let1 t acc
+                                (gen-and
+                                 ;; TODO: if the nt here doesn't have any terminals, then we only
+                                 ;; need to do the tag comparison.
+                                 #;#`(eqv? (nanopass-record-tag #,t) #,(pair-alt-tag (nano-meta-alt elt)))
+                                 #`(#,(pair-alt-pred (nano-meta-alt elt)) #,t)
+                                 ipred))
+                      (append (gen-binding t acc) tbinding*)
+                      ibinding* obinding*)))]
+                [(nano-quote? elt)
                  (raise-syntax-error (maybe-syntax->datum (pass-desc-name pass-desc))
                                      "quoted items are currently unsupported in patterns"
                                      (nano-quote-x elt))]
@@ -819,10 +819,10 @@
                  ; TODO: will break if two ids are same
                  (let ([id (nano-unquote-x elt)])
                    (values
-                     (build-meta-variable-check id acc itype)
-                     '()
-                     (list #`(#,id #,acc))
-                     '()))]
+                    (build-meta-variable-check id acc itype)
+                    '()
+                    (list #`(#,id #,acc))
+                    '()))]
                 [(nano-cata? elt)
                  ; TODO: will break if two ids are same
                  ; HERE: if this is a cata for a (maybe x) field, it needs to not bother
@@ -839,10 +839,10 @@
                                            (if (eq? (maybe-syntax->datum (car outid*)) '*)
                                                (values #f (cdr outid*))
                                                (values
-                                                 (maybe-syntax->datum
-                                                   (spec-type
-                                                     (find-spec (car outid*) maybe-olang)))
-                                                 outid*)))
+                                                (maybe-syntax->datum
+                                                 (spec-type
+                                                  (find-spec (car outid*) maybe-olang)))
+                                                outid*)))
                                        (values #f outid*)))])
                      (define build-cata-call-1
                        (lambda (itype maybe-otype inid* outid*)
@@ -858,8 +858,8 @@
                      (define pdesc-ok?
                        (lambda (pdesc outid*)
                          (and (andmap
-                                (lambda (req) (memf (lambda (x) (bound-identifier=? req x)) fml*))
-                                (take xfml* (- (length xfml*) (length (pdesc-dflt* pdesc)))))
+                               (lambda (req) (memf (lambda (x) (bound-identifier=? req x)) fml*))
+                               (take xfml* (- (length xfml*) (length (pdesc-dflt* pdesc)))))
                               (= (length (pdesc-xval* pdesc))
                                  ; TODO: when we don't have an otype for a processor, we may not have an otype here
                                  ; we should check this out to be sure.
@@ -888,16 +888,16 @@
                      (define build-cata-call-3
                        (lambda (itype maybe-otype t outid*)
                          (let ([callee-pdesc
-                                 (find-proc "build-cata call 3" pass-desc (nano-cata-syntax elt) itype maybe-olang maybe-otype #t
-                                            (lambda (id* dflt*)
-                                              (andmap
-                                                (lambda (req)
-                                                  (memf (lambda (x) (bound-identifier=? req x)) fml*))
-                                                (take id* (- (length id*) (length dflt*)))))
-                                            (lambda (dflt*)
-                                              (= (length dflt*)
-                                                 (let ([len (length outid*)])
-                                                   (if maybe-otype (- len 1) len)))))])
+                                (find-proc "build-cata call 3" pass-desc (nano-cata-syntax elt) itype maybe-olang maybe-otype #t
+                                           (lambda (id* dflt*)
+                                             (andmap
+                                              (lambda (req)
+                                                (memf (lambda (x) (bound-identifier=? req x)) fml*))
+                                              (take id* (- (length id*) (length dflt*)))))
+                                           (lambda (dflt*)
+                                             (= (length dflt*)
+                                                (let ([len (length outid*)])
+                                                  (if maybe-otype (- len 1) len)))))])
                            (let ([id* (cdr (pdesc-fml* callee-pdesc))]
                                  [dflt* (pdesc-dflt* callee-pdesc)])
                              (with-syntax ([(earg* ...)
@@ -929,92 +929,92 @@
                                    #`((lambda (t t* ...) (and t (#,procexpr t t* ...))) #,@inid*))
                                  #`(#,procexpr #,@inid*)))))
                        #;(unless procexpr
-                       (unless (nonterm-id->ntspec? itype (language-ntspecs ilang))
-                         (raise-syntax-error who
-                                             "cannot use cata-morphism without specifying a procedure to call for an input terminal field"
-                                             (nano-cata-syntax elt))))
-                     #;(when maybe-otype
-                     (unless (or procexpr (nonterm-id->ntspec? maybe-otype (language-ntspecs maybe-olang)))
-                       (raise-syntax-error who
-                                           "cannot use cata-morphism without specifying a procedure to call for an output terminal field"
-                                           (nano-cata-syntax elt))))
-                   ; when we are not given a processor, make sure our itype is valid
-                   (values
-                     ; input predicate check
-                     (if maybe-inid*
-                         (build-meta-variable-check (car maybe-inid*)
-                                                    acc (nano-cata-itype elt))
-                         #t)
-                     ; binding of temporaries
-                     '()
-                     ; binding of input variable from language record
-                     (list #`(#,t #,acc))
-                     ; binding of output variable(s)
-                     (if maybe-inid*
-                         (if procexpr
-                             (list #`[#,outid* #,(build-procexpr-call)])
-                             (list #`[#,outid* #,(build-cata-call-1 itype maybe-otype maybe-inid* outid*)]))
-                         (cond
-                           [(and (identifier? procexpr)
-                                 (findf (lambda (pdesc)
-                                          (bound-identifier=? procexpr (pdesc-name pdesc)))
-                                        (pass-desc-pdesc* pass-desc))) =>
-                            (lambda (callee-pdesc)
-                              (if (pdesc-ok? callee-pdesc outid*)
-                                  (list #`[#,outid* #,(build-cata-call-2 callee-pdesc t)])
-                                  (raise-syntax-error (maybe-syntax->datum (pass-desc-name pass-desc))
-                                                      (format "incorrect arguments for ~s in cata" (maybe-syntax->datum procexpr))
-                                                      (nano-cata-syntax elt))))]
-                           [procexpr (list #`[#,outid* #,(build-procexpr-call)])]
-                           [else (list #`[#,outid* #,(build-cata-call-3 itype maybe-otype t outid*)])]))))))]
-            [(list? elt) (process-nano-list elt acc itype)]
-            [else (values #`(equal? #,acc #,elt) '() '() '())])))
+                           (unless (nonterm-id->ntspec? itype (language-ntspecs ilang))
+                             (raise-syntax-error who
+                                                 "cannot use cata-morphism without specifying a procedure to call for an input terminal field"
+                                                 (nano-cata-syntax elt))))
+                       #;(when maybe-otype
+                           (unless (or procexpr (nonterm-id->ntspec? maybe-otype (language-ntspecs maybe-olang)))
+                             (raise-syntax-error who
+                                                 "cannot use cata-morphism without specifying a procedure to call for an output terminal field"
+                                                 (nano-cata-syntax elt))))
+                       ; when we are not given a processor, make sure our itype is valid
+                       (values
+                        ; input predicate check
+                        (if maybe-inid*
+                            (build-meta-variable-check (car maybe-inid*)
+                                                       acc (nano-cata-itype elt))
+                            #t)
+                        ; binding of temporaries
+                        '()
+                        ; binding of input variable from language record
+                        (list #`(#,t #,acc))
+                        ; binding of output variable(s)
+                        (if maybe-inid*
+                            (if procexpr
+                                (list #`[#,outid* #,(build-procexpr-call)])
+                                (list #`[#,outid* #,(build-cata-call-1 itype maybe-otype maybe-inid* outid*)]))
+                            (cond
+                              [(and (identifier? procexpr)
+                                    (findf (lambda (pdesc)
+                                             (bound-identifier=? procexpr (pdesc-name pdesc)))
+                                           (pass-desc-pdesc* pass-desc))) =>
+                                                                          (lambda (callee-pdesc)
+                                                                            (if (pdesc-ok? callee-pdesc outid*)
+                                                                                (list #`[#,outid* #,(build-cata-call-2 callee-pdesc t)])
+                                                                                (raise-syntax-error (maybe-syntax->datum (pass-desc-name pass-desc))
+                                                                                                    (format "incorrect arguments for ~s in cata" (maybe-syntax->datum procexpr))
+                                                                                                    (nano-cata-syntax elt))))]
+                              [procexpr (list #`[#,outid* #,(build-procexpr-call)])]
+                              [else (list #`[#,outid* #,(build-cata-call-3 itype maybe-otype t outid*)])]))))))]
+                [(list? elt) (process-nano-list elt acc itype)]
+                [else (values #`(equal? #,acc #,elt) '() '() '())])))
 
-      (define-who process-nano-meta
-        (lambda (x acc-id)
-          (let ([prec-alt (nano-meta-alt x)])
-            (if (pair-alt? prec-alt)
-                (process-nano-fields (nano-meta-fields x) acc-id
-                                     (pair-alt-accessors prec-alt)
-                                     (map (lambda (x) (spec-type (find-spec x ilang)))
-                                          (pair-alt-field-names prec-alt)))
-                (let ([elt (car (nano-meta-fields x))])
-                  ; TODO: we'd like to more generally support cata for terminal and nonterminal-alt and
-                  ; this code will have to change to support that.
-                  #;(assert (nano-unquote? elt))
-                  (let ([id (nano-unquote-x elt)])
-                    (values #t '() (list #`(#,id #,acc-id)) '())))))))
+          (define-who process-nano-meta
+            (lambda (x acc-id)
+              (let ([prec-alt (nano-meta-alt x)])
+                (if (pair-alt? prec-alt)
+                    (process-nano-fields (nano-meta-fields x) acc-id
+                                         (pair-alt-accessors prec-alt)
+                                         (map (lambda (x) (spec-type (find-spec x ilang)))
+                                              (pair-alt-field-names prec-alt)))
+                    (let ([elt (car (nano-meta-fields x))])
+                      ; TODO: we'd like to more generally support cata for terminal and nonterminal-alt and
+                      ; this code will have to change to support that.
+                      #;(assert (nano-unquote? elt))
+                      (let ([id (nano-unquote-x elt)])
+                        (values #t '() (list #`(#,id #,acc-id)) '())))))))
 
-      (define find-eq-constraints
-        (lambda (ibinding*)
-          (let f ([ibinding* ibinding*] [id* '()])
-            (if (null? ibinding*)
-                (values '() #t)
-                (let* ([ibinding (car ibinding*)] [id (stx-car ibinding)])
-                  (if (bound-id-member? id id*)
-                      (raise-syntax-error who "eq constraints are not supported" id)
-                      #;(let-values ([(ibinding* ieqpred)
-                      (f (cdr ibinding*) id*)])
-                (let ([t (generate-temporary)])
-                  (values
-                    #`((#,t #,(cadr ibinding)) #,@ibinding*)
-                    (gen-and #`(nano-equal? #,t #,id) ieqpred))))
-            (let-values ([(ibinding* ieqpred)
-                          (f (cdr ibinding*) (cons id id*))])
-              (values #`(#,ibinding #,@ibinding*) ieqpred))))))))
+          (define find-eq-constraints
+            (lambda (ibinding*)
+              (let f ([ibinding* ibinding*] [id* '()])
+                (if (null? ibinding*)
+                    (values '() #t)
+                    (let* ([ibinding (car ibinding*)] [id (stx-car ibinding)])
+                      (if (bound-id-member? id id*)
+                          (raise-syntax-error who "eq constraints are not supported" id)
+                          #;(let-values ([(ibinding* ieqpred)
+                                          (f (cdr ibinding*) id*)])
+                              (let ([t (generate-temporary)])
+                                (values
+                                 #`((#,t #,(cadr ibinding)) #,@ibinding*)
+                                 (gen-and #`(nano-equal? #,t #,id) ieqpred))))
+                          (let-values ([(ibinding* ieqpred)
+                                        (f (cdr ibinding*) (cons id id*))])
+                            (values #`(#,ibinding #,@ibinding*) ieqpred))))))))
 
           (define make-user-clause
             (lambda (pclause k)
               (let ([lhs-rec (pclause-lhs pclause)]
-                     [guard-code (pclause-guard pclause)]
-                     [rhs-id (pclause-id pclause)]
-                     [rhs-arg* (pclause-rhs-arg* pclause)])
+                    [guard-code (pclause-guard pclause)]
+                    [rhs-id (pclause-id pclause)]
+                    [rhs-arg* (pclause-rhs-arg* pclause)])
                 (let-values ([(ipred tbinding* ibinding* obinding*)
-                               (process-nano-meta lhs-rec fml)])
+                              (process-nano-meta lhs-rec fml)])
                   (let-values ([(ibinding* ieqpred)
-                                 (find-eq-constraints ibinding*)])
+                                (find-eq-constraints ibinding*)])
                     (let ([guard-code (gen-and guard-code ieqpred)]
-                           [body-code #`(let-values #,obinding* (#,rhs-id #,@rhs-arg*))])
+                          [body-code #`(let-values #,obinding* (#,rhs-id #,@rhs-arg*))])
                       (if (eq? ipred #t)
                           #`(let* (#,@tbinding* #,@ibinding*)
                               #,(if (eq? guard-code #t)
@@ -1035,56 +1035,56 @@
             (lambda (alt*)
               ; NB: don't use variants here to see how that impacts performance for testing purposes.
               #;(let f ([alt* alt*] [rcond-cl* '()])
-              (if (null? alt*)
-                  (reverse rcond-cl*)
-                  (let* ([alt (car alt*)] [alt (if (pair? alt) (car alt) alt)])
-                    (f (cdr alt*)
-                      (cons 
-                        #`[((let ()
-                              (define-values (x)
-                                #,(cond
-                                    [(pair-alt? alt) (pair-alt-pred alt)]
-                                    [(terminal-alt? alt) (tspec-pred (terminal-alt-tspec alt (language-tspecs ilang)))]
-                                    [else (ntspec-all-pred (nonterminal-alt-ntspec alt (language-ntspecs ilang)))]))
-                              x)
-                             #,fml)
-                            #,(make-clause alt '() #f)]
-                        rcond-cl*)))))
-            (let f ([alt* alt*] [rcond-rec-cl* '()] [rcond-case-cl* '()])
-              #;(printf "length alt*: ~s\n" (length alt*))
-              (if (null? alt*)
-                  (values (reverse rcond-rec-cl*) (reverse rcond-case-cl*))
-                  (let* ([alt (car alt*)] [alt (if (pair? alt) (car alt) alt)])
-                    #;(printf "alt: ~s\n" alt)
-                    (with-syntax ([body (make-clause alt '() #f)])
-                      (cond
-                        [(pair-alt? alt)
-                          (f (cdr alt*) rcond-rec-cl*
-                            (cons #`[(eqv? tag #,(pair-alt-tag alt)) body] rcond-case-cl*))]
-                        [(terminal-alt? alt)
-                          (let ([tspec (terminal-alt-tspec alt (language-tspecs ilang))])
-                            (f (cdr alt*)
-                               (cons
+                  (if (null? alt*)
+                      (reverse rcond-cl*)
+                      (let* ([alt (car alt*)] [alt (if (pair? alt) (car alt) alt)])
+                        (f (cdr alt*)
+                           (cons
+                            #`[((let ()
+                                  (define-values (x)
+                                    #,(cond
+                                        [(pair-alt? alt) (pair-alt-pred alt)]
+                                        [(terminal-alt? alt) (tspec-pred (terminal-alt-tspec alt (language-tspecs ilang)))]
+                                        [else (ntspec-all-pred (nonterminal-alt-ntspec alt (language-ntspecs ilang)))]))
+                                  x)
+                                #,fml)
+                               #,(make-clause alt '() #f)]
+                            rcond-cl*)))))
+              (let f ([alt* alt*] [rcond-rec-cl* '()] [rcond-case-cl* '()])
+                #;(printf "length alt*: ~s\n" (length alt*))
+                (if (null? alt*)
+                    (values (reverse rcond-rec-cl*) (reverse rcond-case-cl*))
+                    (let* ([alt (car alt*)] [alt (if (pair? alt) (car alt) alt)])
+                      #;(printf "alt: ~s\n" alt)
+                      (with-syntax ([body (make-clause alt '() #f)])
+                        (cond
+                          [(pair-alt? alt)
+                           (f (cdr alt*) rcond-rec-cl*
+                              (cons #`[(eqv? tag #,(pair-alt-tag alt)) body] rcond-case-cl*))]
+                          [(terminal-alt? alt)
+                           (let ([tspec (terminal-alt-tspec alt (language-tspecs ilang))])
+                             (f (cdr alt*)
+                                (cons
                                  #`[(#,(tspec-pred (terminal-alt-tspec alt (language-tspecs ilang))) #,fml)
                                     body]
                                  rcond-rec-cl*)
-                               rcond-case-cl*))]
-                        [else
-                          (let ([ntspec (nonterminal-alt-ntspec alt (language-ntspecs ilang))])
-                            (let ([maybe-term-pred? (ntspec-all-term-pred ntspec)])
-                              (f (cdr alt*)
-                                (if maybe-term-pred?
-                                    (cons #`[(#,maybe-term-pred? #,fml) body] rcond-rec-cl*)
-                                    rcond-rec-cl*)
-                                (with-syntax ([(all-tag ...) (ntspec-all-tag ntspec)])
-                                  (cons #`[(let ([t (bitwise-and tag #,(language-tag-mask ilang))]) (or (= t all-tag) ...)) body] rcond-case-cl*)))))])))))))
+                                rcond-case-cl*))]
+                          [else
+                           (let ([ntspec (nonterminal-alt-ntspec alt (language-ntspecs ilang))])
+                             (let ([maybe-term-pred? (ntspec-all-term-pred ntspec)])
+                               (f (cdr alt*)
+                                  (if maybe-term-pred?
+                                      (cons #`[(#,maybe-term-pred? #,fml) body] rcond-rec-cl*)
+                                      rcond-rec-cl*)
+                                  (with-syntax ([(all-tag ...) (ntspec-all-tag ntspec)])
+                                    (cons #`[(let ([t (bitwise-and tag #,(language-tag-mask ilang))]) (or (= t all-tag) ...)) body] rcond-case-cl*)))))])))))))
 
           (define build-subtype-call
             (lambda (itype)
               (build-call fml*
-                (find-proc "build subtype call" pass-desc (pdesc-name pdesc) itype maybe-olang maybe-otype #t
-                  (lambda (id* dflt*) (< (- (length id*) (length dflt*)) (length fml*)))
-                  (lambda (dflt*) (= (length dflt*) (length (pdesc-xval* pdesc))))))))
+                          (find-proc "build subtype call" pass-desc (pdesc-name pdesc) itype maybe-olang maybe-otype #t
+                                     (lambda (id* dflt*) (< (- (length id*) (length dflt*)) (length fml*)))
+                                     (lambda (dflt*) (= (length dflt*) (length (pdesc-xval* pdesc))))))))
 
           (define make-clause
             (lambda (alt pclause* else-id)
@@ -1099,14 +1099,14 @@
                       ; to decide if a user-supplied sub-type call with an
                       ; output type is okay to call).)
                       [(and (or (and maybe-olang maybe-otype) (not maybe-olang)) (nonterminal-alt? alt))
-                        (build-subtype-call (maybe-syntax->datum (ntspec-name (nonterminal-alt-ntspec alt (language-ntspecs ilang)))))]
+                       (build-subtype-call (maybe-syntax->datum (ntspec-name (nonterminal-alt-ntspec alt (language-ntspecs ilang)))))]
                       [(and maybe-olang maybe-otype)
-                        (make-system-clause alt)]
+                       (make-system-clause alt)]
                       [else
-                        (raise-syntax-error (maybe-syntax->datum (pass-desc-name pass-desc))
-                          (format "missing ~s clause cannot be generated with no output type"
-                            (maybe-syntax->datum (alt-syn alt)))
-                          (pdesc-name pdesc))])
+                       (raise-syntax-error (maybe-syntax->datum (pass-desc-name pass-desc))
+                                           (format "missing ~s clause cannot be generated with no output type"
+                                                   (maybe-syntax->datum (alt-syn alt)))
+                                           (pdesc-name pdesc))])
                     (let ([pclause (car pclause*)] [pclause* (cdr pclause*)])
                       (set-pclause-used?! pclause #t)
                       (make-user-clause pclause (lambda () (f pclause*))))))))
@@ -1114,16 +1114,16 @@
           (define maybe-add-lambdas
             (lambda (pclause* else-id else-body body)
               (with-syntax ([((id* rhs-body*) ...)
-                              (foldl (lambda (pclause ls)
-                                       (if (pclause-used? pclause)
-                                           (cons (list (pclause-id pclause)
-                                                   (pclause-rhs-lambda pclause))
-                                             ls)
-                                           ls))
-                                (if else-id
-                                    (list (list else-id else-body))
-                                    '())
-                                pclause*)])
+                             (foldl (lambda (pclause ls)
+                                      (if (pclause-used? pclause)
+                                          (cons (list (pclause-id pclause)
+                                                      (pclause-rhs-lambda pclause))
+                                                ls)
+                                          ls))
+                                    (if else-id
+                                        (list (list else-id else-body))
+                                        '())
+                                    pclause*)])
                 #`(let ([id* rhs-body*] ...) #,body))))
           ; note: assumes grammar nonterminal clauses form a DAG
           ; TODO: reject grammars that have nonterminal clauses that don't form DAG
@@ -1158,8 +1158,8 @@
                   (set-nt-alt-info-up*! nt-alt-info (union up* (nt-alt-info-up* nt-alt-info)))
                   (let-values ([(nt-alt-info* down*)
                                 (process-ntalt*
-                                  (filter nonterminal-alt? (ntspec-alts (nonterminal-alt-ntspec alt (language-ntspecs ilang))))
-                                  nt-alt-info* (cons alt up*))])
+                                 (filter nonterminal-alt? (ntspec-alts (nonterminal-alt-ntspec alt (language-ntspecs ilang))))
+                                 nt-alt-info* (cons alt up*))])
                     (set-nt-alt-info-down*! nt-alt-info down*)
                     (values nt-alt-info* (cons alt down*)))))
               (define discover-nt-alt-info
@@ -1177,7 +1177,7 @@
                 (if (null? alt*)
                     (reverse ralt*)
                     (f (cdr alt*)
-                      (cons
+                       (cons
                         (let ([alt (car alt*)])
                           (if (nonterminal-alt? alt)
                               (cons alt (f (ntspec-alts (nonterminal-alt-ntspec alt (language-ntspecs ilang))) '()))
@@ -1217,70 +1217,70 @@
                              [this-and-down* (cons alt (nt-alt-info-down* nt-alt-info))]
                              [up* (nt-alt-info-up* nt-alt-info)])
                         (let-values ([(matching-pclause* other-pclause*)
-                                       (partition (lambda (pclause)
-                                                    (memf (lambda (alt) (alt=? (nano-meta-alt (pclause-lhs pclause)) alt)) this-and-down*))
-                                         pclause*)])
+                                      (partition (lambda (pclause)
+                                                   (memf (lambda (alt) (alt=? (nano-meta-alt (pclause-lhs pclause)) alt)) this-and-down*))
+                                                 pclause*)])
                           (let ([related-pclause* (filter (lambda (pclause)
                                                             (memf (lambda (alt) (alt=? (nano-meta-alt (pclause-lhs pclause)) alt)) up*))
-                                                    other-pclause*)])
+                                                          other-pclause*)])
                             (values (cons pclause (append matching-pclause* related-pclause*)) other-pclause*))))
                       (let-values ([(matching-pclause* other-pclause*)
-                                     (partition (lambda (pclause) (alt=? (nano-meta-alt (pclause-lhs pclause)) alt))
-                                       pclause*)])
+                                    (partition (lambda (pclause) (alt=? (nano-meta-alt (pclause-lhs pclause)) alt))
+                                               pclause*)])
                         (let ([related-pclause* (filter
-                                                  (let ([nt-alt* (pclause-related-alt* pclause)])
-                                                    (lambda (pclause)
-                                                      (memf (lambda (alt) (alt=? (nano-meta-alt (pclause-lhs pclause)) alt)) nt-alt*)))
-                                                  pclause*)])
+                                                 (let ([nt-alt* (pclause-related-alt* pclause)])
+                                                   (lambda (pclause)
+                                                     (memf (lambda (alt) (alt=? (nano-meta-alt (pclause-lhs pclause)) alt)) nt-alt*)))
+                                                 pclause*)])
                           (values (cons pclause (append matching-pclause* related-pclause*)) other-pclause*))))))
               #;(let f ([pclause* pclause*] [alt-tree alt-tree] [rcond-cl* '()])
-              (if (null? pclause*)
-                  (values (reverse rcond-cl*) alt-tree)
-                  (let* ([pclause (car pclause*)] [alt (nano-meta-alt (pclause-lhs pclause))])
-                    (let-values ([(related-pclause* other-pclause*)
-                                   (partition-pclause* alt pclause (cdr pclause*))])
-                      (f other-pclause*
-                        (remove-alt alt alt-tree)
-                        (cons
-                          #`[((let ()
-                                (define-values (x)
-                                  #,(cond
-                                      [(pair-alt? alt) (pair-alt-pred alt)]
-                                      [(terminal-alt? alt) (tspec-pred (terminal-alt-tspec alt (language-tspecs ilang)))]
-                                      [else (ntspec-all-pred (nonterminal-alt-ntspec alt (language-ntspecs ilang)))]))
-                                x)
-                               #,fml)
-                              #,(make-clause alt related-pclause* else-id)]
-                          rcond-cl*))))))
-            (let f ([pclause* pclause*] [alt-tree alt-tree] [rcond-rec-cl* '()] [rcond-case-cl* '()])
-              #;(printf "length pclause*: ~s\n" (length pclause*))
-              (if (null? pclause*)
-                  (values (reverse rcond-rec-cl*) (reverse rcond-case-cl*) alt-tree)
-                  (let* ([pclause (car pclause*)] [alt (nano-meta-alt (pclause-lhs pclause))])
-                    (let-values ([(related-pclause* other-pclause*)
-                                   (partition-pclause* alt pclause (cdr pclause*))])
-                      #;(printf "alt: ~s, length related-pclause*: ~s, other-pclause*: ~s\n"
-                        (syntax->datum (alt-syn alt)) (length related-pclause*) (length other-pclause*))
-                      (with-syntax ([body (make-clause alt related-pclause* else-id)])
-                        (cond
-                          [(pair-alt? alt)
-                            (f other-pclause* (remove-alt alt alt-tree) rcond-rec-cl*
-                              (cons #`[(eqv? tag #,(pair-alt-tag alt)) body] rcond-case-cl*))]
-                          [(terminal-alt? alt)
-                           (f other-pclause* (remove-alt alt alt-tree)
-                              (cons #`[(#,(tspec-pred (terminal-alt-tspec alt (language-tspecs ilang))) #,fml)
-                                       body]
-                                    rcond-rec-cl*)
-                              rcond-case-cl*)]
-                          [else
-                            (let ([ntspec (nonterminal-alt-ntspec alt (language-ntspecs ilang))])
-                              (let ([maybe-term-pred? (ntspec-all-term-pred ntspec)])
-                                (f other-pclause* (remove-alt alt alt-tree)
-                                  (if maybe-term-pred?
-                                      (cons #`[(#,maybe-term-pred? #,fml) body] rcond-rec-cl*)
+                  (if (null? pclause*)
+                      (values (reverse rcond-cl*) alt-tree)
+                      (let* ([pclause (car pclause*)] [alt (nano-meta-alt (pclause-lhs pclause))])
+                        (let-values ([(related-pclause* other-pclause*)
+                                      (partition-pclause* alt pclause (cdr pclause*))])
+                          (f other-pclause*
+                             (remove-alt alt alt-tree)
+                             (cons
+                              #`[((let ()
+                                    (define-values (x)
+                                      #,(cond
+                                          [(pair-alt? alt) (pair-alt-pred alt)]
+                                          [(terminal-alt? alt) (tspec-pred (terminal-alt-tspec alt (language-tspecs ilang)))]
+                                          [else (ntspec-all-pred (nonterminal-alt-ntspec alt (language-ntspecs ilang)))]))
+                                    x)
+                                  #,fml)
+                                 #,(make-clause alt related-pclause* else-id)]
+                              rcond-cl*))))))
+              (let f ([pclause* pclause*] [alt-tree alt-tree] [rcond-rec-cl* '()] [rcond-case-cl* '()])
+                #;(printf "length pclause*: ~s\n" (length pclause*))
+                (if (null? pclause*)
+                    (values (reverse rcond-rec-cl*) (reverse rcond-case-cl*) alt-tree)
+                    (let* ([pclause (car pclause*)] [alt (nano-meta-alt (pclause-lhs pclause))])
+                      (let-values ([(related-pclause* other-pclause*)
+                                    (partition-pclause* alt pclause (cdr pclause*))])
+                        #;(printf "alt: ~s, length related-pclause*: ~s, other-pclause*: ~s\n"
+                                  (syntax->datum (alt-syn alt)) (length related-pclause*) (length other-pclause*))
+                        (with-syntax ([body (make-clause alt related-pclause* else-id)])
+                          (cond
+                            [(pair-alt? alt)
+                             (f other-pclause* (remove-alt alt alt-tree) rcond-rec-cl*
+                                (cons #`[(eqv? tag #,(pair-alt-tag alt)) body] rcond-case-cl*))]
+                            [(terminal-alt? alt)
+                             (f other-pclause* (remove-alt alt alt-tree)
+                                (cons #`[(#,(tspec-pred (terminal-alt-tspec alt (language-tspecs ilang))) #,fml)
+                                         body]
                                       rcond-rec-cl*)
-                                  (with-syntax ([(all-tag ...) (ntspec-all-tag ntspec)])
-                                    (cons #`[(let ([t (bitwise-and tag #,(language-tag-mask ilang))]) (or (= t all-tag) ...)) body] rcond-case-cl*)))))]))))))))
+                                rcond-case-cl*)]
+                            [else
+                             (let ([ntspec (nonterminal-alt-ntspec alt (language-ntspecs ilang))])
+                               (let ([maybe-term-pred? (ntspec-all-term-pred ntspec)])
+                                 (f other-pclause* (remove-alt alt alt-tree)
+                                    (if maybe-term-pred?
+                                        (cons #`[(#,maybe-term-pred? #,fml) body] rcond-rec-cl*)
+                                        rcond-rec-cl*)
+                                    (with-syntax ([(all-tag ...) (ntspec-all-tag ntspec)])
+                                      (cons #`[(let ([t (bitwise-and tag #,(language-tag-mask ilang))]) (or (= t all-tag) ...)) body] rcond-case-cl*)))))]))))))))
           (define annotate-pclause*!
             (lambda (pclause* ntspec nt-alt-info*)
               (let f ([pclause* pclause*]
@@ -1294,64 +1294,64 @@
                           (let-values ([(matching-pclause* other-pclause*)
                                         (partition (lambda (pclause)
                                                      (alt=? (nano-meta-alt (pclause-lhs pclause)) alt))
-                                          pclause*)])
+                                                   pclause*)])
                             (for-each
-                              (lambda (pclause)
-                                (set-pclause-related-alt*! pclause
-                                  (cons curr-alt (nt-alt-info-up* (findf (lambda (x) (alt=? (nt-alt-info-alt x) curr-alt)) nt-alt-info*)))))
-                              matching-pclause*)
+                             (lambda (pclause)
+                               (set-pclause-related-alt*! pclause
+                                                          (cons curr-alt (nt-alt-info-up* (findf (lambda (x) (alt=? (nt-alt-info-alt x) curr-alt)) nt-alt-info*)))))
+                             matching-pclause*)
                             (f other-pclause* (cdr alt*) curr-alt))))))))
           (let-values ([(pclause* else-id else-body) (parse-clauses cl*)])
             (let ([ntspec (nonterm-id->ntspec who itype (language-ntspecs ilang))])
               (maybe-add-lambdas pclause* else-id else-body
-                (let ([nt-alt-info* (build-nt-alt-info* ntspec)])
-                  (annotate-pclause*! pclause* ntspec nt-alt-info*)
-                  #;(let-values ([(user-clause* alt*)
-                  (handle-pclause* pclause* else-id
-                    (if else-id '() (build-alt-tree ntspec))
-                    nt-alt-info*)])
-                      (let ([system-clause* (if else-id '() (generate-system-clauses alt*))])
-                        #`(cond
-                            #,@user-clause*
-                            #,@system-clause*
-                            [else #,(if else-id
-                                        #`(#,else-id) 
-                                        #`(error '#,(pass-desc-name pass-desc)
-                                            #,(format "unexpected ~s from ~~s" (maybe-syntax->datum itype))
-                                            #,fml))])))
-                  (let-values ([(user-rec-clause* user-case-clause* alt*)
-                                 (handle-pclause* pclause* else-id
-                                   (if else-id '() (build-alt-tree ntspec))
-                                   nt-alt-info*)])
-                    (let-values ([(system-rec-clause* system-case-clause*)
-                                   (if else-id
-                                       (values
-                                         (if (ntspec-all-term-pred ntspec)
-                                             #`([(not (nanopass-record? #,fml)) (#,else-id)])
-                                             '())
-                                         '())
-                                       (generate-system-clauses alt*))])
-                      #`(cond
-                          #,@user-rec-clause*
-                          #,@system-rec-clause*
-                          [else 
-                            (let ([tag #,(quasisyntax/loc x (nanopass-record-tag #,fml))])
-                              (cond
-                                #,@user-case-clause*
-                                #,@system-case-clause*
-                                [else #,(if else-id
-                                            #`(#,else-id) 
-                                            (quasisyntax/loc x
-                                              (let* ([fml-datum #,fml]
-                                                     [tag (nanopass-record-tag #,fml)]
-                                                     [source-info (if (syntax? fml-datum)
-                                                                     (syntax->source-info fml-datum)
-                                                                     #f)]
-                                                     [base-msg (format "found ~s (tag: ~s) given to processor, expected ~a pattern"
-                                                                      fml-datum tag '#,(maybe-syntax->datum itype))])
-                                                (if source-info
-                                                    (error '#,(pass-desc-name pass-desc) "~a\n  at ~a" base-msg source-info)
-                                                    (error '#,(pass-desc-name pass-desc) "~a" base-msg)))))]))]))))))))))
+                                 (let ([nt-alt-info* (build-nt-alt-info* ntspec)])
+                                   (annotate-pclause*! pclause* ntspec nt-alt-info*)
+                                   #;(let-values ([(user-clause* alt*)
+                                                   (handle-pclause* pclause* else-id
+                                                                    (if else-id '() (build-alt-tree ntspec))
+                                                                    nt-alt-info*)])
+                                       (let ([system-clause* (if else-id '() (generate-system-clauses alt*))])
+                                         #`(cond
+                                             #,@user-clause*
+                                             #,@system-clause*
+                                             [else #,(if else-id
+                                                         #`(#,else-id)
+                                                         #`(error '#,(pass-desc-name pass-desc)
+                                                                  #,(format "unexpected ~s from ~~s" (maybe-syntax->datum itype))
+                                                                  #,fml))])))
+                                   (let-values ([(user-rec-clause* user-case-clause* alt*)
+                                                 (handle-pclause* pclause* else-id
+                                                                  (if else-id '() (build-alt-tree ntspec))
+                                                                  nt-alt-info*)])
+                                     (let-values ([(system-rec-clause* system-case-clause*)
+                                                   (if else-id
+                                                       (values
+                                                        (if (ntspec-all-term-pred ntspec)
+                                                            #`([(not (nanopass-record? #,fml)) (#,else-id)])
+                                                            '())
+                                                        '())
+                                                       (generate-system-clauses alt*))])
+                                       #`(cond
+                                           #,@user-rec-clause*
+                                           #,@system-rec-clause*
+                                           [else
+                                            (let ([tag #,(quasisyntax/loc x (nanopass-record-tag #,fml))])
+                                              (cond
+                                                #,@user-case-clause*
+                                                #,@system-case-clause*
+                                                [else #,(if else-id
+                                                            #`(#,else-id)
+                                                            (quasisyntax/loc x
+                                                              (let* ([fml-datum #,fml]
+                                                                     [tag (nanopass-record-tag #,fml)]
+                                                                     [source-info (if (syntax? fml-datum)
+                                                                                      (syntax->source-info fml-datum)
+                                                                                      #f)]
+                                                                     [base-msg (format "found ~s (tag: ~s) given to processor, expected ~a pattern"
+                                                                                       fml-datum tag '#,(maybe-syntax->datum itype))])
+                                                                (if source-info
+                                                                    (error '#,(pass-desc-name pass-desc) "~a\n  at ~a" base-msg source-info)
+                                                                    (error '#,(pass-desc-name pass-desc) "~a" base-msg)))))]))]))))))))))
 
     ; build-call and find-proc need to work in concert, so they are located near eachother
     ; to increase the chance that we actually remember to alter both of them when the
@@ -1360,28 +1360,28 @@
       (case-lambda
         [(caller-fml* callee-pdesc) (build-call caller-fml* callee-pdesc #f)]
         [(caller-fml* callee-pdesc maybe?)
-          (define build-args
-            (lambda (callee-fml* callee-init* caller-fml*)
-              (let f ([required-cnt (- (length callee-fml*) (length callee-init*))]
-                       [callee-fml* callee-fml*]
-                       [callee-init* callee-init*]
-                       [caller-fml* caller-fml*])
-                (cond
-                  [(null? callee-fml*) '()]
-                  [(and (= required-cnt 0) (null? caller-fml*))
-                    (cons (car callee-init*)
-                      (f required-cnt (cdr callee-fml*) (cdr callee-init*) caller-fml*))]
-                  [(= required-cnt 0)
-                    (cons (car caller-fml*)
-                      (f required-cnt (cdr callee-fml*) (cdr callee-init*) (cdr caller-fml*)))]
-                  [else (cons (car caller-fml*)
-                          (f (- required-cnt 1) (cdr callee-fml*) callee-init*  (cdr caller-fml*)))]))))
-          (with-syntax ([pname (pdesc-name callee-pdesc)]
-                         [(arg* ...) (build-args (pdesc-fml* callee-pdesc) (pdesc-dflt* callee-pdesc) caller-fml*)])
-            (if maybe?
-                (with-syntax ([(t t* ...) (generate-temporaries #'(arg* ...))])
-                  #'((lambda (t t* ...) (and t (pname t t* ...))) arg* ...))
-                #'(pname arg* ...)))]))
+         (define build-args
+           (lambda (callee-fml* callee-init* caller-fml*)
+             (let f ([required-cnt (- (length callee-fml*) (length callee-init*))]
+                     [callee-fml* callee-fml*]
+                     [callee-init* callee-init*]
+                     [caller-fml* caller-fml*])
+               (cond
+                 [(null? callee-fml*) '()]
+                 [(and (= required-cnt 0) (null? caller-fml*))
+                  (cons (car callee-init*)
+                        (f required-cnt (cdr callee-fml*) (cdr callee-init*) caller-fml*))]
+                 [(= required-cnt 0)
+                  (cons (car caller-fml*)
+                        (f required-cnt (cdr callee-fml*) (cdr callee-init*) (cdr caller-fml*)))]
+                 [else (cons (car caller-fml*)
+                             (f (- required-cnt 1) (cdr callee-fml*) callee-init*  (cdr caller-fml*)))]))))
+         (with-syntax ([pname (pdesc-name callee-pdesc)]
+                       [(arg* ...) (build-args (pdesc-fml* callee-pdesc) (pdesc-dflt* callee-pdesc) caller-fml*)])
+           (if maybe?
+               (with-syntax ([(t t* ...) (generate-temporaries #'(arg* ...))])
+                 #'((lambda (t t* ...) (and t (pname t t* ...))) arg* ...))
+               #'(pname arg* ...)))]))
 
     (define (find-proc msg pass-desc src-stx itype maybe-olang maybe-otype try-to-generate? xfmls-ok? xvals-ok?)
       ; will never be asked to find a proc without an itype, so itype is never #f
@@ -1466,12 +1466,12 @@
               (raise-syntax-error who
                                   (format "cannot find a transformer that accepts input type ~s and no output type" itype)
                                   (pass-desc-name pass-desc) src-stx))))
-    
+
     (define ((parse-proc pass-name ilang olang) x)
       (let loop ([x x] [trace? #f] [echo? #f])
         (syntax-parse x
           [((~datum echo) (~and (~var nc) (~not (~datum :))) . rest)
-           (loop #'(nc . rest) trace? #t)]                  
+           (loop #'(nc . rest) trace? #t)]
           [((~datum trace) (~and (~var nc) (~not (~datum :))) . rest)
            (loop #'(nc . rest) #t echo?)]
           [(proc-name ?colon itype (arg ...) ?arrow otype (rv ...) body ...)
@@ -1524,75 +1524,75 @@
                             [_ (squawk "invalid output-type specifier" #'otype)])])
                      (make-pdesc #'proc-name maybe-itype fml* init*
                                  maybe-otype (syntax->list #'(rv ...)) #'(body ...) trace? echo?))))))])))
-    
-      (define lookup-lang
-        (lambda (pass-name maybe-name)
-          (if maybe-name
-              (let* ([olang-pair (lookup-language 'define-pass "unrecognized language name" maybe-name)]
-                     [lang (and olang-pair (car olang-pair))]
-                     [meta-parser (and olang-pair (cdr olang-pair))])
-                (unless (language? lang)
-                  (raise-syntax-error (maybe-syntax->datum pass-name) "unrecognized language" maybe-name))
-                (unless (procedure? meta-parser)
-                  (raise-syntax-error (maybe-syntax->datum pass-name) "missing meta parser for language" maybe-name))
-                (values lang meta-parser))
-              (values #f #f))))
 
-      (define build-checked-body
-        (lambda (pass-desc maybe-fml xval* maybe-itype maybe-otype maybe-ometa-parser maybe-body)
-          (define generate-output-check
-            (lambda (type x ntspec*)
-              ((lambda (ls) (syntax-case ls ()
-                              [(thing) #'thing]
-                              [(stuff ...) #'(or stuff ...)]))
-               (let f ([ntspec (nonterm-id->ntspec who type ntspec*)] [test* '()])
-                 #`((#,(ntspec-all-pred ntspec) #,x)
-                    #,@(foldl
-                         (lambda (alt test*)
-                           (if (nonterminal-alt? alt)
-                               (f (nonterminal-alt-ntspec alt ntspec*) test*)
-                               test*))
-                         test* (ntspec-alts ntspec)))))))
-          (define generate-body
-            (lambda (maybe-olang maybe-otype)
-              (cond
-                [(and maybe-body maybe-otype)
-                 (rhs-in-context-quasiquote (pass-desc-name pass-desc) maybe-otype
-                   maybe-olang maybe-ometa-parser maybe-body)]
-                [maybe-body]
-                [else
-                 (unless (stx-null? xval*)
-                   (raise-syntax-error who "cannot auto-generate body for pass with extra return values"
-                     (pass-desc-name pass-desc)))
-                 (let ([ilang (pass-desc-maybe-ilang pass-desc)])
-                   (unless ilang
-                     (raise-syntax-error who "cannot auto-generate body without input language"
-                       (pass-desc-name pass-desc)))
-                   (let ([itype (or maybe-itype (language-entry-ntspec ilang))])
-                     (let ([pdesc (find-proc "generating body" pass-desc (pass-desc-name pass-desc) itype maybe-olang maybe-otype #t
-                                    (lambda (id* dflt*) (= (length dflt*) (length id*)))
-                                    (lambda (dflt*) (= (length dflt*) 0)))])
-                       (let ([init* (pdesc-dflt* pdesc)] [rv* (pdesc-xval* pdesc)])
-                         (if (null? rv*)
-                             #`(#,(pdesc-name pdesc) #,maybe-fml #,@init*)
-                             #`(let-values ([(result #,@(map (lambda (x) (gensym "rv")) rv*))
-                                             (#,(pdesc-name pdesc) #,maybe-fml #,@init*)])
-                                 result))))))])))
-          (let ([olang (pass-desc-maybe-olang pass-desc)])
-            (if olang
-                (begin
-                  #;(printf "olang: ~s\n" olang)
+    (define lookup-lang
+      (lambda (pass-name maybe-name)
+        (if maybe-name
+            (let* ([olang-pair (lookup-language 'define-pass "unrecognized language name" maybe-name)]
+                   [lang (and olang-pair (car olang-pair))]
+                   [meta-parser (and olang-pair (cdr olang-pair))])
+              (unless (language? lang)
+                (raise-syntax-error (maybe-syntax->datum pass-name) "unrecognized language" maybe-name))
+              (unless (procedure? meta-parser)
+                (raise-syntax-error (maybe-syntax->datum pass-name) "missing meta parser for language" maybe-name))
+              (values lang meta-parser))
+            (values #f #f))))
+
+    (define build-checked-body
+      (lambda (pass-desc maybe-fml xval* maybe-itype maybe-otype maybe-ometa-parser maybe-body)
+        (define generate-output-check
+          (lambda (type x ntspec*)
+            ((lambda (ls) (syntax-case ls ()
+                            [(thing) #'thing]
+                            [(stuff ...) #'(or stuff ...)]))
+             (let f ([ntspec (nonterm-id->ntspec who type ntspec*)] [test* '()])
+               #`((#,(ntspec-all-pred ntspec) #,x)
+                  #,@(foldl
+                      (lambda (alt test*)
+                        (if (nonterminal-alt? alt)
+                            (f (nonterminal-alt-ntspec alt ntspec*) test*)
+                            test*))
+                      test* (ntspec-alts ntspec)))))))
+        (define generate-body
+          (lambda (maybe-olang maybe-otype)
+            (cond
+              [(and maybe-body maybe-otype)
+               (rhs-in-context-quasiquote (pass-desc-name pass-desc) maybe-otype
+                                          maybe-olang maybe-ometa-parser maybe-body)]
+              [maybe-body]
+              [else
+               (unless (stx-null? xval*)
+                 (raise-syntax-error who "cannot auto-generate body for pass with extra return values"
+                                     (pass-desc-name pass-desc)))
+               (let ([ilang (pass-desc-maybe-ilang pass-desc)])
+                 (unless ilang
+                   (raise-syntax-error who "cannot auto-generate body without input language"
+                                       (pass-desc-name pass-desc)))
+                 (let ([itype (or maybe-itype (language-entry-ntspec ilang))])
+                   (let ([pdesc (find-proc "generating body" pass-desc (pass-desc-name pass-desc) itype maybe-olang maybe-otype #t
+                                           (lambda (id* dflt*) (= (length dflt*) (length id*)))
+                                           (lambda (dflt*) (= (length dflt*) 0)))])
+                     (let ([init* (pdesc-dflt* pdesc)] [rv* (pdesc-xval* pdesc)])
+                       (if (null? rv*)
+                           #`(#,(pdesc-name pdesc) #,maybe-fml #,@init*)
+                           #`(let-values ([(result #,@(map (lambda (x) (gensym "rv")) rv*))
+                                           (#,(pdesc-name pdesc) #,maybe-fml #,@init*)])
+                               result))))))])))
+        (let ([olang (pass-desc-maybe-olang pass-desc)])
+          (if olang
+              (begin
+                #;(printf "olang: ~s\n" olang)
                 (let ([otype (or maybe-otype (language-entry-ntspec olang))])
                   (with-syntax ([checked-body
-                                  #`(unless #,(generate-output-check otype #'x (language-ntspecs olang))
-                                      (let* ([x-datum x]
-                                             [source-info (if (syntax? x-datum)
+                                 #`(unless #,(generate-output-check otype #'x (language-ntspecs olang))
+                                     (let* ([x-datum x]
+                                            [source-info (if (syntax? x-datum)
                                                              (syntax->source-info x-datum)
                                                              #f)]
-                                             [base-msg (format "expected ~s but got ~s" '#,(datum->syntax #'* otype) x-datum)])
-                                        (if source-info
-                                            (error '#,(pass-desc-name pass-desc) "~a\n  at ~a" base-msg source-info)
-                                            (error '#,(pass-desc-name pass-desc) "~a" base-msg))))])
+                                            [base-msg (format "expected ~s but got ~s" '#,(datum->syntax #'* otype) x-datum)])
+                                       (if source-info
+                                           (error '#,(pass-desc-name pass-desc) "~a\n  at ~a" base-msg source-info)
+                                           (error '#,(pass-desc-name pass-desc) "~a" base-msg))))])
                     (if (null? xval*)
                         #`(let ([x #,(generate-body olang otype)])
                             checked-body
@@ -1601,19 +1601,19 @@
                           #`(let-values ([(x res* ...) #,(generate-body olang otype)])
                               checked-body
                               (values x res* ...)))))))
-                (generate-body #f #f)))))
+              (generate-body #f #f)))))
 
-      (define do-define-pass
-        (lambda (pass-name echo? maybe-iname maybe-itype fml* maybe-oname maybe-otype xval* defn* p* maybe-body)
-          (define echo-pass
-            (lambda (x)
-              (when echo?
-                (printf "pass ~s expanded into:\n" (maybe-syntax->datum pass-name))
-                (pretty-print (maybe-syntax->datum x))
-                (newline))
-              x))
-          #;(unless (and maybe-iname (not (null? fml*)))
-          (raise-syntax-error who "can't yet handle \"*\" iname" pass-name))
+    (define do-define-pass
+      (lambda (pass-name echo? maybe-iname maybe-itype fml* maybe-oname maybe-otype xval* defn* p* maybe-body)
+        (define echo-pass
+          (lambda (x)
+            (when echo?
+              (printf "pass ~s expanded into:\n" (maybe-syntax->datum pass-name))
+              (pretty-print (maybe-syntax->datum x))
+              (newline))
+            x))
+        #;(unless (and maybe-iname (not (null? fml*)))
+            (raise-syntax-error who "can't yet handle \"*\" iname" pass-name))
         (let-values ([(maybe-ilang maybe-imeta-parser) (lookup-lang pass-name maybe-iname)]
                      [(maybe-olang maybe-ometa-parser) (lookup-lang pass-name maybe-oname)])
           (when (and maybe-itype (not (nonterm-id->ntspec? maybe-itype (language-ntspecs maybe-ilang))))
@@ -1623,38 +1623,38 @@
           (let* ([pdesc* (map (parse-proc pass-name maybe-ilang maybe-olang) p*)]
                  [pass-desc (make-pass-desc pass-name maybe-ilang maybe-olang pdesc*)]
                  [body (build-checked-body pass-desc (and (pair? fml*) (car fml*))
-                         xval* maybe-itype maybe-otype maybe-ometa-parser maybe-body)])
+                                           xval* maybe-itype maybe-otype maybe-ometa-parser maybe-body)])
             (echo-pass
-              (with-syntax ([who (datum->syntax pass-name 'who)])
-                (syntax-property
-                 (quasisyntax/loc x
-                   (define (#,pass-name . #,fml*)
-                     (define who '#,pass-name)
-                     #,@defn*
-                     #,@(make-processors pass-desc maybe-imeta-parser maybe-ometa-parser)
-                     #,body))
-                 'mouse-over-tooltips
-                 (cons
-                  (and maybe-iname maybe-ilang
-                       (vector maybe-iname
-                               (- (syntax-position maybe-iname) 1)
-                               (+ (syntax-position maybe-iname)
-                                  (syntax-span maybe-iname)
-                                  -1)
-                               (format "Language ~a:~n~a"
-                                       (syntax-e maybe-iname)
-                                       (pretty-format/write
-                                        (language->s-expression-internal maybe-ilang)))))
-                  (and maybe-oname maybe-olang
-                       (vector maybe-oname
-                               (- (syntax-position maybe-oname) 1)
-                               (+ (syntax-position maybe-oname)
-                                  (syntax-span maybe-oname)
-                                  -1)
-                               (format "Language ~a:~n~a"
-                                       (syntax-e maybe-oname)
-                                       (pretty-format/write
-                                        (language->s-expression-internal maybe-olang)))))))))))))
+             (with-syntax ([who (datum->syntax pass-name 'who)])
+               (syntax-property
+                (quasisyntax/loc x
+                  (define (#,pass-name . #,fml*)
+                    (define who '#,pass-name)
+                    #,@defn*
+                    #,@(make-processors pass-desc maybe-imeta-parser maybe-ometa-parser)
+                    #,body))
+                'mouse-over-tooltips
+                (cons
+                 (and maybe-iname maybe-ilang
+                      (vector maybe-iname
+                              (- (syntax-position maybe-iname) 1)
+                              (+ (syntax-position maybe-iname)
+                                 (syntax-span maybe-iname)
+                                 -1)
+                              (format "Language ~a:~n~a"
+                                      (syntax-e maybe-iname)
+                                      (pretty-format/write
+                                       (language->s-expression-internal maybe-ilang)))))
+                 (and maybe-oname maybe-olang
+                      (vector maybe-oname
+                              (- (syntax-position maybe-oname) 1)
+                              (+ (syntax-position maybe-oname)
+                                 (syntax-span maybe-oname)
+                                 -1)
+                              (format "Language ~a:~n~a"
+                                      (syntax-e maybe-oname)
+                                      (pretty-format/write
+                                       (language->s-expression-internal maybe-olang)))))))))))))
 
     (syntax-case x ()
       [(_ pass-name ?colon iname (fml ...) ?arrow oname (xval ...) stuff ...)
@@ -1666,8 +1666,8 @@
                          [* (eq? (datum *) '*) (values #f #f)]
                          [iname (identifier? #'iname) (values #'iname #f)]
                          [(iname itype)
-                           (and (identifier? #'iname) (identifier? #'itype))
-                           (values #'iname #'itype)]
+                          (and (identifier? #'iname) (identifier? #'itype))
+                          (values #'iname #'itype)]
                          [_ (squawk "invalid input language specifier" #'iname)])])
            (let ([fml* (stx->list #'(fml ...))])
              (unless (andmap identifier? fml*) (squawk "expected list of identifiers" fml*))
@@ -1696,7 +1696,7 @@
                                                 (or (identifier? fml)
                                                     (syntax-case fml ()
                                                       [[fml exp-val] (identifier? #'fml)])))
-                                        (stx->list #'(fml ...)))
+                                              (stx->list #'(fml ...)))
                                       #t)]
                                [(?modifier ?not-colon . more)
                                 (and (memq (datum ?modifier) '(trace echo))
@@ -1708,18 +1708,18 @@
                            (s2 defn* processor* #`(begin #,@stuff*) echo?)))))
                (define (s2 defn* processor* maybe-body echo?)
                  #;(printf "do-define-pass: ~s, ~s, ~s, ~s, ~s, ~s, ~s, ~s, ~s, ~s, ~s\n"
-                   #'pass-name echo? maybe-iname maybe-itype fml*
-                   maybe-oname maybe-otype #'(xval ...) defn* (reverse processor*) maybe-body)
+                           #'pass-name echo? maybe-iname maybe-itype fml*
+                           maybe-oname maybe-otype #'(xval ...) defn* (reverse processor*) maybe-body)
                  (do-define-pass #'pass-name echo? maybe-iname maybe-itype fml*
-                   maybe-oname maybe-otype #'(xval ...) defn* (reverse processor*) maybe-body))
+                                 maybe-oname maybe-otype #'(xval ...) defn* (reverse processor*) maybe-body))
                (let s0 ([stuff* #'(stuff ...)] [defn* '()] [echo? #f])
                  (syntax-case stuff* ()
                    [((definitions defn ...) . stuff*)
-                     (eq? (datum definitions) 'definitions)
-                     (s0 #'stuff* #'(defn ...) echo?)]
+                    (eq? (datum definitions) 'definitions)
+                    (s0 #'stuff* #'(defn ...) echo?)]
                    [((?expand-modifier ?echo) . stuff*)
-                     (and (eq? (datum ?expand-modifier) 'expand-modifier)
-                          (eq? (datum ?echo) 'echo))
-                     (s0 #'stuff* defn* #t)]
+                    (and (eq? (datum ?expand-modifier) 'expand-modifier)
+                         (eq? (datum ?echo) 'echo))
+                    (s0 #'stuff* defn* #t)]
                    [_ (s1 stuff* defn* '() echo?)]))))))]
       [(_ . rest) (raise-syntax-error who "invalid syntax" #'(define-pass . rest))])))
