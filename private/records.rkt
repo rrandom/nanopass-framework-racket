@@ -5,133 +5,133 @@
 
 (require racket/contract/base)
 (provide
-  nonterm-id->ntspec
-  $make-language
-  $make-ntspec
-  language-unparser
-  language-struct
-  $make-pair-alt
-  ntspec-struct-name
-  pair-alt-name
-  extract-terminal-metas
-  nonterminal-alt-name
-  terminal-alt-type
-  ntspec-tag
-  language->s-expression-internal
-  (contract-out
-    [find-spec (-> identifier? language? (or/c tspec? ntspec?))]
-    [nonterminal-meta? (-> identifier? (listof ntspec?) boolean?)]
-    [nano-alt->ntspec (-> alt? (listof ntspec?) any)]
-    [nonterm-id->ntspec? (-> (or/c identifier? symbol?) (listof ntspec?) (or/c ntspec? false/c))]
-    [id->spec (-> (or/c identifier? symbol?) language? (or/c tspec? ntspec? false/c))]
-    [term-id->tspec? (-> (or/c identifier? symbol?) (listof tspec?) (or/c tspec? false/c))]
+ nonterm-id->ntspec
+ $make-language
+ $make-ntspec
+ language-unparser
+ language-struct
+ $make-pair-alt
+ ntspec-struct-name
+ pair-alt-name
+ extract-terminal-metas
+ nonterminal-alt-name
+ terminal-alt-type
+ ntspec-tag
+ language->s-expression-internal
+ (contract-out
+  [find-spec (-> identifier? language? (or/c tspec? ntspec?))]
+  [nonterminal-meta? (-> identifier? (listof ntspec?) boolean?)]
+  [nano-alt->ntspec (-> alt? (listof ntspec?) any)]
+  [nonterm-id->ntspec? (-> (or/c identifier? symbol?) (listof ntspec?) (or/c ntspec? false/c))]
+  [id->spec (-> (or/c identifier? symbol?) language? (or/c tspec? ntspec? false/c))]
+  [term-id->tspec? (-> (or/c identifier? symbol?) (listof tspec?) (or/c tspec? false/c))]
 
-    [meta-name->tspec (-> identifier? (listof tspec?) (or/c false/c tspec?))]
-    [meta-name->ntspec (-> identifier? (listof ntspec?) (or/c false/c ntspec?))]
+  [meta-name->tspec (-> identifier? (listof tspec?) (or/c false/c tspec?))]
+  [meta-name->ntspec (-> identifier? (listof ntspec?) (or/c false/c ntspec?))]
 
-    [make-nano-dots (-> any/c nano-dots?)]
-    [nano-dots? (-> any/c boolean?)]
-    [nano-dots-x (-> nano-dots? any/c)]
+  [make-nano-dots (-> any/c nano-dots?)]
+  [nano-dots? (-> any/c boolean?)]
+  [nano-dots-x (-> nano-dots? any/c)]
 
-    [make-nano-quote (-> syntax? nano-quote?)]
-    [nano-quote? (-> any/c boolean?)]
-    [nano-quote-x (-> nano-quote? syntax?)]
+  [make-nano-quote (-> syntax? nano-quote?)]
+  [nano-quote? (-> any/c boolean?)]
+  [nano-quote-x (-> nano-quote? syntax?)]
 
-    [make-nano-unquote (-> syntax? nano-unquote?)]
-    [nano-unquote? (-> any/c boolean?)]
-    [nano-unquote-x (-> nano-unquote? syntax?)]
+  [make-nano-unquote (-> syntax? nano-unquote?)]
+  [nano-unquote? (-> any/c boolean?)]
+  [nano-unquote-x (-> nano-unquote? syntax?)]
 
-    [make-nano-meta (-> alt? (listof (or/c nano-dots? nano-quote? nano-unquote? nano-cata? nano-meta? list?)) nano-meta?)]
-    [nano-meta? (-> any/c boolean?)]
-    [nano-meta-alt (-> nano-meta? alt?)]
-    [nano-meta-fields (-> nano-meta?
-                          (listof
-                            (or/c nano-dots? nano-quote?
-                              nano-unquote? nano-cata?
-                              nano-meta? list?)))]
+  [make-nano-meta (-> alt? (listof (or/c nano-dots? nano-quote? nano-unquote? nano-cata? nano-meta? list?)) nano-meta?)]
+  [nano-meta? (-> any/c boolean?)]
+  [nano-meta-alt (-> nano-meta? alt?)]
+  [nano-meta-fields (-> nano-meta?
+                        (listof
+                         (or/c nano-dots? nano-quote?
+                               nano-unquote? nano-cata?
+                               nano-meta? list?)))]
 
-    [make-nano-cata (-> symbol?
-                        syntax?
-                        (or/c false/c syntax?)
-                        (or/c false/c (listof syntax?))
-                        (or/c false/c (listof identifier?))
-                        boolean?
-                        nano-cata?)]
-    [nano-cata? (-> any/c boolean?)]
-    [nano-cata-itype (-> nano-cata? symbol?)]
-    [nano-cata-syntax (-> nano-cata? syntax?)]
-    [nano-cata-procexpr (-> nano-cata? (or/c false/c syntax?))]
-    [nano-cata-maybe-inid* (-> nano-cata? (or/c false/c (listof syntax?)))]
-    [nano-cata-outid* (-> nano-cata? (or/c false/c (listof identifier?)))]
-    [nano-cata-maybe? (-> nano-cata? boolean?)]
+  [make-nano-cata (-> symbol?
+                      syntax?
+                      (or/c false/c syntax?)
+                      (or/c false/c (listof syntax?))
+                      (or/c false/c (listof identifier?))
+                      boolean?
+                      nano-cata?)]
+  [nano-cata? (-> any/c boolean?)]
+  [nano-cata-itype (-> nano-cata? symbol?)]
+  [nano-cata-syntax (-> nano-cata? syntax?)]
+  [nano-cata-procexpr (-> nano-cata? (or/c false/c syntax?))]
+  [nano-cata-maybe-inid* (-> nano-cata? (or/c false/c (listof syntax?)))]
+  [nano-cata-outid* (-> nano-cata? (or/c false/c (listof identifier?)))]
+  [nano-cata-maybe? (-> nano-cata? boolean?)]
 
-    [make-language (-> identifier? identifier? (listof tspec?) (listof ntspec?) language?)]
-    [language? (-> any/c boolean?)]
-    [language-name (-> language? identifier?)]
-    [language-entry-ntspec (-> language? identifier?)]
-    [language-tspecs (-> language? (listof tspec?))]
-    [language-ntspecs (-> language? (listof ntspec?))]
-    [language-tag-mask (-> language? (or/c false/c exact-nonnegative-integer?))]
+  [make-language (-> identifier? identifier? (listof tspec?) (listof ntspec?) language?)]
+  [language? (-> any/c boolean?)]
+  [language-name (-> language? identifier?)]
+  [language-entry-ntspec (-> language? identifier?)]
+  [language-tspecs (-> language? (listof tspec?))]
+  [language-ntspecs (-> language? (listof ntspec?))]
+  [language-tag-mask (-> language? (or/c false/c exact-nonnegative-integer?))]
 
-    [make-tspec (-> identifier? (listof identifier?) (or/c false/c syntax?) identifier? tspec?)]
-    [tspec=? (-> tspec? tspec? boolean?)]
-    [tspec? (-> any/c boolean?)]
-    [tspec-type (-> tspec? identifier?)]
-    [tspec-meta-vars (-> tspec? (listof identifier?))]
-    [tspec-handler (-> tspec? (or/c false/c syntax?))]
-    [tspec-pred (-> tspec? (or/c false/c identifier?))]
+  [make-tspec (-> identifier? (listof identifier?) (or/c false/c syntax?) identifier? tspec?)]
+  [tspec=? (-> tspec? tspec? boolean?)]
+  [tspec? (-> any/c boolean?)]
+  [tspec-type (-> tspec? identifier?)]
+  [tspec-meta-vars (-> tspec? (listof identifier?))]
+  [tspec-handler (-> tspec? (or/c false/c syntax?))]
+  [tspec-pred (-> tspec? (or/c false/c identifier?))]
 
-    [make-ntspec (-> identifier? (listof identifier?) (listof alt?) ntspec?)]
-    [fresh-ntspec (case->
-                    (-> ntspec? ntspec?)
-                    (-> ntspec? (listof alt?) ntspec?))]
-    [ntspec=? (-> ntspec? ntspec? boolean?)]
-    [ntspec? (-> any/c boolean?)]
-    [ntspec-name (-> ntspec? identifier?)]
-    [ntspec-meta-vars (-> ntspec? (listof identifier?))]
-    [ntspec-alts (-> ntspec? (listof alt?))]
-    [ntspec-pred (-> ntspec? (or/c false/c identifier?))]
-    [ntspec-all-pred (-> ntspec? (or/c false/c symbol? syntax?))]
-    [ntspec-all-tag (-> ntspec? (or/c false/c (listof exact-nonnegative-integer?)))]
-    [ntspec-all-term-pred (-> ntspec? (or/c false/c syntax?))]
+  [make-ntspec (-> identifier? (listof identifier?) (listof alt?) ntspec?)]
+  [fresh-ntspec (case->
+                 (-> ntspec? ntspec?)
+                 (-> ntspec? (listof alt?) ntspec?))]
+  [ntspec=? (-> ntspec? ntspec? boolean?)]
+  [ntspec? (-> any/c boolean?)]
+  [ntspec-name (-> ntspec? identifier?)]
+  [ntspec-meta-vars (-> ntspec? (listof identifier?))]
+  [ntspec-alts (-> ntspec? (listof alt?))]
+  [ntspec-pred (-> ntspec? (or/c false/c identifier?))]
+  [ntspec-all-pred (-> ntspec? (or/c false/c symbol? syntax?))]
+  [ntspec-all-tag (-> ntspec? (or/c false/c (listof exact-nonnegative-integer?)))]
+  [ntspec-all-term-pred (-> ntspec? (or/c false/c syntax?))]
 
-    [alt? (-> any/c alt?)]
-    [fresh-alt (-> alt? alt?)]
-    [alt=? (-> alt? alt? boolean?)]
-    [alt-syn (-> alt? syntax?)]
-    [alt-pretty (-> alt? (or/c false/c syntax?))]
-    [alt-pretty-procedure? (-> alt? boolean?)]
+  [alt? (-> any/c alt?)]
+  [fresh-alt (-> alt? alt?)]
+  [alt=? (-> alt? alt? boolean?)]
+  [alt-syn (-> alt? syntax?)]
+  [alt-pretty (-> alt? (or/c false/c syntax?))]
+  [alt-pretty-procedure? (-> alt? boolean?)]
 
-    [make-pair-alt (-> syntax? (or/c false/c syntax?) boolean? pair-alt?)]
-    [pair-alt? (-> any/c boolean?)]
-    [pair-alt-pattern (-> pair-alt? (or/c false/c symbol? vector? pair? null?))]
-    [pair-alt-field-names (-> pair-alt? (or/c false/c (listof identifier?)))]
-    [pair-alt-field-levels (-> pair-alt? (or/c false/c (listof exact-nonnegative-integer?)))]
-    [pair-alt-field-maybes (-> pair-alt? (or/c false/c (listof boolean?)))]
-    [pair-alt-accessors (-> pair-alt? (or/c false/c (listof identifier?)))]
-    [pair-alt-implicit? (-> pair-alt? boolean?)]
-    [pair-alt-pred (-> pair-alt? identifier?)]
-    [pair-alt-maker (-> pair-alt? identifier?)]
-    [pair-alt-tag (-> pair-alt? exact-nonnegative-integer?)]
+  [make-pair-alt (-> syntax? (or/c false/c syntax?) boolean? pair-alt?)]
+  [pair-alt? (-> any/c boolean?)]
+  [pair-alt-pattern (-> pair-alt? (or/c false/c symbol? vector? pair? null?))]
+  [pair-alt-field-names (-> pair-alt? (or/c false/c (listof identifier?)))]
+  [pair-alt-field-levels (-> pair-alt? (or/c false/c (listof exact-nonnegative-integer?)))]
+  [pair-alt-field-maybes (-> pair-alt? (or/c false/c (listof boolean?)))]
+  [pair-alt-accessors (-> pair-alt? (or/c false/c (listof identifier?)))]
+  [pair-alt-implicit? (-> pair-alt? boolean?)]
+  [pair-alt-pred (-> pair-alt? identifier?)]
+  [pair-alt-maker (-> pair-alt? identifier?)]
+  [pair-alt-tag (-> pair-alt? exact-nonnegative-integer?)]
 
-    [make-terminal-alt (-> syntax? (or/c false/c syntax?) boolean? (or/c false/c identifier? symbol?) terminal-alt?)]
-    [terminal-alt? (-> any/c boolean?)]
-    [terminal-alt-tspec (-> terminal-alt? (listof tspec?) (or/c false/c tspec?))]
+  [make-terminal-alt (-> syntax? (or/c false/c syntax?) boolean? (or/c false/c identifier? symbol?) terminal-alt?)]
+  [terminal-alt? (-> any/c boolean?)]
+  [terminal-alt-tspec (-> terminal-alt? (listof tspec?) (or/c false/c tspec?))]
 
-    [make-nonterminal-alt (-> syntax? (or/c false/c syntax?) boolean? (or/c false/c identifier?) nonterminal-alt?)]
-    [nonterminal-alt? (-> any/c boolean?)]
-    [nonterminal-alt-ntspec (-> nonterminal-alt? (listof ntspec?) (or/c false/c ntspec?))]
+  [make-nonterminal-alt (-> syntax? (or/c false/c syntax?) boolean? (or/c false/c identifier?) nonterminal-alt?)]
+  [nonterminal-alt? (-> any/c boolean?)]
+  [nonterminal-alt-ntspec (-> nonterminal-alt? (listof ntspec?) (or/c false/c ntspec?))]
 
-    [has-implicit-alt? (-> ntspec? (listof ntspec?) boolean?)]
-    [spec-all-pred (-> (or/c tspec? ntspec?) syntax?)]
-    [spec-type (-> (or/c tspec? ntspec?) identifier?)]
+  [has-implicit-alt? (-> ntspec? (listof ntspec?) boolean?)]
+  [spec-all-pred (-> (or/c tspec? ntspec?) syntax?)]
+  [spec-type (-> (or/c tspec? ntspec?) identifier?)]
 
-    [subspec? (-> (or/c tspec? ntspec?) (or/c tspec? ntspec?) (listof tspec?) (listof ntspec?) boolean?)]
+  [subspec? (-> (or/c tspec? ntspec?) (or/c tspec? ntspec?) (listof tspec?) (listof ntspec?) boolean?)]
 
-    [annotate-language! (-> language? identifier? any)]
-    [language->lang-records (-> language? syntax?)]
-    [language->lang-predicates (-> language? identifier? syntax?)]
-    [exists-alt? (-> alt? (listof tspec?) ntspec? (listof tspec?) (listof ntspec?) (or/c false/c alt?))]))
+  [annotate-language! (-> language? identifier? any)]
+  [language->lang-records (-> language? syntax?)]
+  [language->lang-predicates (-> language? identifier? syntax?)]
+  [exists-alt? (-> alt? (listof tspec?) ntspec? (listof tspec?) (listof ntspec?) (or/c false/c alt?))]))
 
 (require racket/syntax
          syntax/stx
@@ -155,18 +155,18 @@
             (unless (null? specs)
               (let ([test-spec (car specs)])
                 (for-each
-                  (lambda (mv)
-                    (let ([mv-sym (maybe-syntax->datum mv)])
-                      (for-each
-                        (lambda (spec)
-                          (when (memq mv-sym (map maybe-syntax->datum (spec-meta-vars spec)))
-                            (raise-syntax-error 'define-language
-                              (format "the forms ~s and ~s in language ~s uses the same meta-variable"
-                                (maybe-syntax->datum (spec-name test-spec))
-                                (maybe-syntax->datum (spec-name spec)) (maybe-syntax->datum lang-name))
-                              mv)))
-                        (cdr specs))))
-                  (spec-meta-vars test-spec))))))))
+                 (lambda (mv)
+                   (let ([mv-sym (maybe-syntax->datum mv)])
+                     (for-each
+                      (lambda (spec)
+                        (when (memq mv-sym (map maybe-syntax->datum (spec-meta-vars spec)))
+                          (raise-syntax-error 'define-language
+                                              (format "the forms ~s and ~s in language ~s uses the same meta-variable"
+                                                      (maybe-syntax->datum (spec-name test-spec))
+                                                      (maybe-syntax->datum (spec-name spec)) (maybe-syntax->datum lang-name))
+                                              mv)))
+                      (cdr specs))))
+                 (spec-meta-vars test-spec))))))))
     (lambda (name entry-ntspec tspecs ntspecs)
       (check-meta! name tspecs ntspecs)
       ($make-language name entry-ntspec tspecs ntspecs
@@ -177,38 +177,38 @@
 (define-struct tspec (type meta-vars handler pred) #:prefab)
 
 ;; This function tests equality of tspecs
-;; tspecs are considered to be equal when the lists of metas are 
-;; identical (same order too) and when they represent the same terminal 
+;; tspecs are considered to be equal when the lists of metas are
+;; identical (same order too) and when they represent the same terminal
 ; TODO: think about a better way of doing equality here... right now we get a weird
 ; error message when the original had (fixnum (x y z)) and our extension has (fixnum (x y))
 (define tspec=?
   (lambda (ts1 ts2)
-    (and (equal? (map syntax->datum (tspec-meta-vars ts1)) 
+    (and (equal? (map syntax->datum (tspec-meta-vars ts1))
                  (map syntax->datum (tspec-meta-vars ts2)))
-         (eq? (syntax->datum (tspec-type ts1)) 
-              (syntax->datum (tspec-type ts2)))))) 
+         (eq? (syntax->datum (tspec-type ts1))
+              (syntax->datum (tspec-type ts2))))))
 
 (define extract-terminal-metas
   (lambda (tspecs)
     (foldl
-      (lambda (tspec metas)
-        (foldl
-          (lambda (mv metas)
-            (cons (syntax->datum mv) metas))
-          metas (tspec-meta-vars tspec)))
-      '() tspecs)))
+     (lambda (tspec metas)
+       (foldl
+        (lambda (mv metas)
+          (cons (syntax->datum mv) metas))
+        metas (tspec-meta-vars tspec)))
+     '() tspecs)))
 
 (define-struct ntspec
   (name meta-vars alts
-    (tag #:mutable)
-    (pred #:mutable)         ; this record?
-    (all-pred #:mutable)     ; this record or valid sub-grammar element
-    ; e.g., if Rhs -> Triv, Triv -> Lvalue, and Lvalue -> var,
-    ; then all-pred returns true for any Rhs, Triv, Lvalue, or var
-    (all-term-pred #:mutable) ; this record's term sub-grammar elements
-    (all-tag #:mutable)      ; tag for this record logor all sub grammar elements
-    ; following all-pred order
-    (struct-name #:mutable))  ; name of the struct for this nonterminal
+        (tag #:mutable)
+        (pred #:mutable)         ; this record?
+        (all-pred #:mutable)     ; this record or valid sub-grammar element
+        ; e.g., if Rhs -> Triv, Triv -> Lvalue, and Lvalue -> var,
+        ; then all-pred returns true for any Rhs, Triv, Lvalue, or var
+        (all-term-pred #:mutable) ; this record's term sub-grammar elements
+        (all-tag #:mutable)      ; tag for this record logor all sub grammar elements
+        ; following all-pred order
+        (struct-name #:mutable))  ; name of the struct for this nonterminal
   #:prefab #:constructor-name $make-ntspec)
 
 (define make-ntspec
@@ -216,14 +216,14 @@
     ($make-ntspec name meta-vars alts #f #f #f #f #f #f)))
 
 (define fresh-ntspec
-  (case-lambda 
+  (case-lambda
     [(ntspec) (fresh-ntspec ntspec (map fresh-alt (ntspec-alts ntspec)))]
     [(ntspec alts)
      (make-ntspec (ntspec-name ntspec) (ntspec-meta-vars ntspec) alts)]))
 
 ;; This function tests the equality of ntspecs
-;; ntspecs are considered to be equal when they are ntspecs of 
-;; the same nonterminal and the intersection of their alternatives is 
+;; ntspecs are considered to be equal when they are ntspecs of
+;; the same nonterminal and the intersection of their alternatives is
 ;; not null
 (define ntspec=?
   (lambda (p1 p2)
@@ -240,13 +240,13 @@
     (cond
       [(pair-alt? alt)
        (make-pair-alt (alt-syn alt) (alt-pretty alt)
-         (alt-pretty-procedure? alt))]
+                      (alt-pretty-procedure? alt))]
       [(terminal-alt? alt)
        (make-terminal-alt (alt-syn alt) (alt-pretty alt)
-         (alt-pretty-procedure? alt) (terminal-alt-type alt))]
+                          (alt-pretty-procedure? alt) (terminal-alt-type alt))]
       [(nonterminal-alt? alt)
        (make-nonterminal-alt (alt-syn alt) (alt-pretty alt)
-         (alt-pretty-procedure? alt) (nonterminal-alt-name alt))]
+                             (alt-pretty-procedure? alt) (nonterminal-alt-name alt))]
       [else (error who "unexpected alt ~s" alt)])))
 
 
@@ -273,7 +273,7 @@
 (define make-pair-alt
   (lambda (syn pretty pretty-procedure?)
     ($make-pair-alt syn pretty pretty-procedure?
-      #f #f #f #f #f #f #f #f #f #f)))
+                    #f #f #f #f #f #f #f #f #f #f)))
 
 (define-struct (terminal-alt alt) ((type #:mutable)) #:prefab)
 
@@ -299,22 +299,22 @@
     (cond
       [(tspec? x) (tspec-type x)]
       [(ntspec? x) (ntspec-name x)]
-      [else (error who "unrecognized type ~s" x)]))) 
+      [else (error who "unrecognized type ~s" x)])))
 
-;;; records produced by meta parsers 
+;;; records produced by meta parsers
 (define-struct nano-dots (x) #:prefab)
 
 (define-struct nano-quote (x) #:prefab)
-  
+
 (define-struct nano-unquote (x) #:prefab)
-  
+
 (define-struct nano-meta (alt fields) #:prefab)
-  
+
 (define-struct nano-cata
   (itype syntax procexpr maybe-inid* outid* maybe?)
   #:prefab)
-  
-;; record helpers 
+
+;; record helpers
 (define (find-spec m lang)
   (let ([name (meta-var->raw-meta-var (maybe-syntax->datum m))])
     (or (findf (lambda (ntspec)
@@ -332,12 +332,12 @@
     (and (ormap (lambda (x) (memq m (map maybe-syntax->datum (ntspec-meta-vars x))))
                 ntspec*)
          #t)))
- 
+
 (define (nonterminal-meta->ntspec meta ntspecs)
   (define meta* (meta-var->raw-meta-var (maybe-syntax->datum meta)))
   (findf (lambda (x) (memq meta* (map maybe-syntax->datum (ntspec-meta-vars x))))
          ntspecs))
-  
+
 (define (terminal-meta->tspec meta tspecs)
   (define meta* (meta-var->raw-meta-var (maybe-syntax->datum meta)))
   (findf (lambda (x) (memq meta* (map maybe-syntax->datum (tspec-meta-vars x))))
@@ -347,8 +347,8 @@
 ;;;       reference to it, if so, figure out what should be implemented.
 (define nano-alt->ntspec
   (lambda (alt ntspecs)
-    (error 'nano-alt->ntspec "Not implemented"))) 
-  
+    (error 'nano-alt->ntspec "Not implemented")))
+
 (define id->spec
   (lambda (id lang)
     (or (nonterm-id->ntspec? id (language-ntspecs lang))
@@ -358,13 +358,13 @@
   (lambda (id tspecs)
     (let ([type (maybe-syntax->datum id)])
       (findf (lambda (tspec) (eq? (maybe-syntax->datum (tspec-type tspec)) type))
-        tspecs))))
+             tspecs))))
 
 (define nonterm-id->ntspec?
   (lambda (id ntspecs)
     (let ([ntname (maybe-syntax->datum id)])
       (findf (lambda (ntspec) (eq? (maybe-syntax->datum (ntspec-name ntspec)) ntname))
-        ntspecs))))
+             ntspecs))))
 
 (define-syntax nonterm-id->ntspec
   (syntax-rules ()
@@ -377,15 +377,15 @@
   (lambda (m tspecs)
     (let ([m (meta-var->raw-meta-var (maybe-syntax->datum m))])
       (findf (lambda (tspec)
-               (memq m (map maybe-syntax->datum (tspec-meta-vars tspec)))) 
-        tspecs))))
-  
+               (memq m (map maybe-syntax->datum (tspec-meta-vars tspec))))
+             tspecs))))
+
 (define-who meta-name->ntspec
   (lambda (m ntspecs)
     (let ([m (meta-var->raw-meta-var (maybe-syntax->datum m))])
       (findf (lambda (ntspec)
-               (memq m (map maybe-syntax->datum (ntspec-meta-vars ntspec)))) 
-        ntspecs))))
+               (memq m (map maybe-syntax->datum (ntspec-meta-vars ntspec))))
+             ntspecs))))
 
 (define subspec?
   (lambda (maybe-subspec spec tspecs ntspecs)
@@ -394,40 +394,40 @@
            (let ([spec (car spec*)])
              (or (eq? maybe-subspec spec)
                  (loop
-                   (if (tspec? spec)
+                  (if (tspec? spec)
+                      (cdr spec*)
+                      (foldl
+                       (lambda (alt spec*)
+                         (cond
+                           [(terminal-alt? alt)
+                            (let ([spec (terminal-alt-tspec alt tspecs)])
+                              (if (memq spec seen*)
+                                  spec*
+                                  (cons spec spec*)))]
+                           [(nonterminal-alt? alt)
+                            (let ([spec (nonterminal-alt-ntspec alt ntspecs)])
+                              (if (memq spec seen*)
+                                  spec*
+                                  (cons spec spec*)))]
+                           [else spec*]))
                        (cdr spec*)
-                       (foldl
-                         (lambda (alt spec*)
-                           (cond
-                             [(terminal-alt? alt)
-                              (let ([spec (terminal-alt-tspec alt tspecs)])
-                                (if (memq spec seen*)
-                                    spec*
-                                    (cons spec spec*)))]
-                             [(nonterminal-alt? alt)
-                              (let ([spec (nonterminal-alt-ntspec alt ntspecs)])
-                                (if (memq spec seen*)
-                                    spec*
-                                    (cons spec spec*)))]
-                             [else spec*]))
-                         (cdr spec*)
-                         (ntspec-alts spec)))
-                   (cons spec seen*))))))))
+                       (ntspec-alts spec)))
+                  (cons spec seen*))))))))
 
-(define has-implicit-alt? 
+(define has-implicit-alt?
   (lambda (ntspec ntspecs)
     (ormap
-      (lambda (alt)
-        (if (pair-alt? alt)
-            (pair-alt-implicit? alt)
-            (and (nonterminal-alt? alt)
-                 (has-implicit-alt? (nonterminal-alt-ntspec alt ntspecs) ntspecs))))
-      (ntspec-alts ntspec))))
+     (lambda (alt)
+       (if (pair-alt? alt)
+           (pair-alt-implicit? alt)
+           (and (nonterminal-alt? alt)
+                (has-implicit-alt? (nonterminal-alt-ntspec alt ntspecs) ntspecs))))
+     (ntspec-alts ntspec))))
 
 (define gather-meta
   (lambda (lang)
     (let ([tmeta (map tspec-meta-vars (language-tspecs lang))]
-           [pmeta (map ntspec-meta-vars (language-ntspecs lang))])
+          [pmeta (map ntspec-meta-vars (language-ntspecs lang))])
       (apply append (append tmeta pmeta)))))
 (define bitwise-length
   (lambda (n)
@@ -471,8 +471,8 @@
                                             [(stx-pair? n) (loop (stx-car n))]
                                             [else
                                              (raise-syntax-error 'define-language
-                                               "expected symbol keyword or meta-variable reference at start of nonterminal production"
-                                               syn (stx-car syn))]))]
+                                                                 "expected symbol keyword or meta-variable reference at start of nonterminal production"
+                                                                 syn (stx-car syn))]))]
                                   [rec-sym (unique-symbol lang-name ntname name)]
                                   [m? (meta? name)])
                              (let-values ([(p fields levels maybes)
@@ -528,36 +528,36 @@
               [(eq? all-pred 'processing) (raise-syntax-error 'define-language "found mutually recursive nonterminals" (ntspec-name ntspec))]
               [all-pred (values all-pred (ntspec-all-term-pred ntspec) (ntspec-all-tag ntspec))]
               [else
-                (set-ntspec-all-pred! ntspec 'processing)
-                (let f ([alt* (ntspec-alts ntspec)] [pred* '()] [term-pred* '()] [tag '()])
-                  (if (null? alt*)
-                      (let ([all-pred (if (null? pred*)
-                                          (ntspec-pred ntspec)
-                                          #`(lambda (x)
-                                              (or (#,(ntspec-pred ntspec) x)
-                                                  #,@(map (lambda (pred) #`(#,pred x))
-                                                          pred*))))]
-                            [all-term-pred (cond
-                                             [(null? term-pred*) #f]
-                                             [(null? (cdr term-pred*)) (car term-pred*)]
-                                             [else #`(lambda (x) (or #,@(map (lambda (pred) #`(#,pred x)) term-pred*)))])]
-                            [tag (cons (ntspec-tag ntspec) tag)])
-                        (set-ntspec-all-pred! ntspec all-pred)
-                        (set-ntspec-all-term-pred! ntspec all-term-pred)
-                        (set-ntspec-all-tag! ntspec tag)
-                        (values all-pred all-term-pred tag))
-                      (let ([alt (car alt*)])
-                        (cond
-                          [(pair-alt? alt) (f (cdr alt*) pred* term-pred* tag)]
-                          [(terminal-alt? alt)
-                           (let ([pred (tspec-pred (terminal-alt-tspec alt tspec*))])
-                             (f (cdr alt*) (cons pred pred*) (cons pred term-pred*) tag))]
-                          [(nonterminal-alt? alt)
-                           (let-values ([(pred term-pred new-tag)
-                                         (annotate-all-pred! (nonterminal-alt-ntspec alt ntspec*))])
-                             (f (cdr alt*) (cons pred pred*)
-                                (if term-pred (cons term-pred term-pred*) term-pred*)
-                                (append new-tag tag)))]))))]))))
+               (set-ntspec-all-pred! ntspec 'processing)
+               (let f ([alt* (ntspec-alts ntspec)] [pred* '()] [term-pred* '()] [tag '()])
+                 (if (null? alt*)
+                     (let ([all-pred (if (null? pred*)
+                                         (ntspec-pred ntspec)
+                                         #`(lambda (x)
+                                             (or (#,(ntspec-pred ntspec) x)
+                                                 #,@(map (lambda (pred) #`(#,pred x))
+                                                         pred*))))]
+                           [all-term-pred (cond
+                                            [(null? term-pred*) #f]
+                                            [(null? (cdr term-pred*)) (car term-pred*)]
+                                            [else #`(lambda (x) (or #,@(map (lambda (pred) #`(#,pred x)) term-pred*)))])]
+                           [tag (cons (ntspec-tag ntspec) tag)])
+                       (set-ntspec-all-pred! ntspec all-pred)
+                       (set-ntspec-all-term-pred! ntspec all-term-pred)
+                       (set-ntspec-all-tag! ntspec tag)
+                       (values all-pred all-term-pred tag))
+                     (let ([alt (car alt*)])
+                       (cond
+                         [(pair-alt? alt) (f (cdr alt*) pred* term-pred* tag)]
+                         [(terminal-alt? alt)
+                          (let ([pred (tspec-pred (terminal-alt-tspec alt tspec*))])
+                            (f (cdr alt*) (cons pred pred*) (cons pred term-pred*) tag))]
+                         [(nonterminal-alt? alt)
+                          (let-values ([(pred term-pred new-tag)
+                                        (annotate-all-pred! (nonterminal-alt-ntspec alt ntspec*))])
+                            (f (cdr alt*) (cons pred pred*)
+                               (if term-pred (cons term-pred term-pred*) term-pred*)
+                               (append new-tag tag)))]))))]))))
       (let ([nt-counter (annotate-ntspec*! ntspec*)])
         (let ([bits (bitwise-length nt-counter)])
           (set-language-tag-mask! lang (- (arithmetic-shift 1 bits) 1))
@@ -575,16 +575,16 @@
       (let* ([x-datum (if (syntax? x) (syntax->datum x) x)]
              [source-info (if (syntax? x) (syntax->source-info x) #f)]
              [base-msg (if msg
-                          (format "expected ~s but received ~s in field ~s of ~s from ~a"
-                                  name x-datum fld alt msg)
-                          (format "expected ~s but received ~s in field ~s of ~s"
-                                  name x-datum fld alt))])
+                           (format "expected ~s but received ~s in field ~s of ~s from ~a"
+                                   name x-datum fld alt msg)
+                           (format "expected ~s but received ~s in field ~s of ~s"
+                                   name x-datum fld alt))])
         (if source-info
             (error who "~a\n  at ~a" base-msg source-info)
             (error who "~a" base-msg))))))
-  
+
 (require (for-template 'helper))
-    
+
 (define (language->lang-records lang)
   (define lang-rec-id (language-struct lang))
   (define lang-unparser-id (language-unparser lang))
@@ -594,23 +594,24 @@
     ; TODO: handle fld and msgs that are lists.
     (define (build-field-check fld msg level maybe?)
       (with-values
-        (cond
-          [(nonterminal-meta->ntspec fld ntspecs) =>
-           (lambda (ntspec) (values (ntspec-all-pred ntspec) (ntspec-name ntspec)))]
-          [(terminal-meta->tspec fld tspecs) =>
-           (lambda (tspec) (values (tspec-pred tspec) (tspec-type tspec)))]
-          [else
-           ;; XXX hack because `...` should not happen twice at the same level
-           ;;     in a pattern. Should really be handled at the meta-parser level
-           (if (equal? (syntax->datum fld) '...)
-               (raise-syntax-error 'define-language
-                                   (format "misplaced ellipsis in language ~a (follows other ellipsis)"
-                                           (maybe-syntax->datum (language-name lang)))
-                                   fld)
-               (raise-syntax-error 'define-language
-                                   (format "unrecognized meta-variable in language ~s"
-                                           (maybe-syntax->datum (language-name lang)))
-                                   #;fld))])
+          (cond
+            [(nonterminal-meta->ntspec fld ntspecs) =>
+                                                    (lambda (ntspec) (values (ntspec-all-pred ntspec) (ntspec-name ntspec)))]
+            [(terminal-meta->tspec fld tspecs) =>
+                                               (lambda (tspec) (values (tspec-pred tspec) (tspec-type tspec)))]
+            [else
+             ;; XXX hack because `...` should not happen twice at the same level
+             ;;     in a pattern. Should really be handled at the meta-parser level
+             (if (equal? (syntax->datum fld) '...)
+                 (raise-syntax-error 'define-language
+                                     (format "misplaced ellipsis in language ~a (follows other ellipsis)"
+                                             (maybe-syntax->datum (language-name lang)))
+                                     fld)
+                 (raise-syntax-error 'define-language
+                                     (format "unrecognized meta-variable '~a' in language ~s"
+                                             (syntax->datum fld)
+                                             (maybe-syntax->datum (language-name lang)))
+                                     fld))])
         (lambda (pred? name)
           (with-syntax ([pred? (if maybe?
                                    #`(lambda (x) (or (eq? x #f) (#,pred? x)))
@@ -620,7 +621,7 @@
                        #`(record-check pred? '#,fld #,msg '#,name who '#,(alt-syn alt))
                        #`(lambda (x)
                            (for-each #,(f (- level 1)) x))))
-                #,fld)))))
+               #,fld)))))
     (with-syntax ([(fld ...) (pair-alt-field-names alt)])
       (with-syntax ([(msg ...) (generate-temporaries #'(fld ...))]
                     [$maker (format-id (pair-alt-name alt) "$~a" (pair-alt-maker alt))])
@@ -695,7 +696,7 @@
                                 (if (terminal-alt? alt)
                                     (cons (tspec-pred (terminal-alt-tspec alt (language-tspecs desc))) term?*)
                                     term?*)))))))))))
-  
+
 ;; utilities moved out of pass.ss
 (define-who exists-alt?
   (lambda (ialt itspecs ntspec otspecs ontspecs)
@@ -714,27 +715,27 @@
         [(terminal-alt? ialt)
          (let ([type (maybe-syntax->datum (tspec-type (terminal-alt-tspec ialt itspecs)))])
            (scan-alts
-             (lambda (alt)
-               (and (terminal-alt? alt)
-                    (eq? (maybe-syntax->datum (tspec-type (terminal-alt-tspec alt otspecs))) type)))))]
+            (lambda (alt)
+              (and (terminal-alt? alt)
+                   (eq? (maybe-syntax->datum (tspec-type (terminal-alt-tspec alt otspecs))) type)))))]
         [(pair-alt? ialt)
          (if (pair-alt-implicit? ialt)
              (let ([pattern (pair-alt-pattern ialt)])
                (scan-alts
-                 (lambda (alt)
-                   (and (pair-alt? alt)
-                        (pair-alt-implicit? alt)
-                        (let ([apattern (pair-alt-pattern alt)])
-                          (equal? apattern pattern))))))
+                (lambda (alt)
+                  (and (pair-alt? alt)
+                       (pair-alt-implicit? alt)
+                       (let ([apattern (pair-alt-pattern alt)])
+                         (equal? apattern pattern))))))
              (let ([pattern (pair-alt-pattern ialt)])
                (scan-alts
-                 (lambda (alt)
-                   (and (pair-alt? alt)
-                        (not (pair-alt-implicit? alt))
-                        (let ([asyn (alt-syn alt)])
-                          (let ([apattern (pair-alt-pattern alt)])
-                            (and (eq? (maybe-syntax->datum (stx-car asyn)) (maybe-syntax->datum (stx-car syn)))
-                                 (equal? apattern pattern)))))))))]
+                (lambda (alt)
+                  (and (pair-alt? alt)
+                       (not (pair-alt-implicit? alt))
+                       (let ([asyn (alt-syn alt)])
+                         (let ([apattern (pair-alt-pattern alt)])
+                           (and (eq? (maybe-syntax->datum (stx-car asyn)) (maybe-syntax->datum (stx-car syn)))
+                                (equal? apattern pattern)))))))))]
         [else (error who "unexpected alt ~s" ialt)]))))
 
 (define (language->s-expression-internal lang [handler? #f])
@@ -749,7 +750,7 @@
         (syntax->datum (alt-syn a))))
   (define (ntspec->s-expression p)
     `(,(syntax->datum (ntspec-name p)) ,(map syntax->datum (ntspec-meta-vars p))
-      ,@(map alt->s-expression (ntspec-alts p))))
+                                       ,@(map alt->s-expression (ntspec-alts p))))
   `(define-language ,(syntax->datum (language-name lang))
      (entry ,(syntax->datum (language-entry-ntspec lang)))
      (terminals ,@(map tspec->s-expression (language-tspecs lang)))
