@@ -2,9 +2,9 @@
 ;;; Copyright (c) 2000-2013 Dipanwita Sarkar, Andrew W. Keep, R. Kent Dybvig, Oscar Waddell, Leif Andersen
 ;;; See the accompanying file Copyright for details
 
-;;; Producs are : record defs, parser, meta parser, lang 
+;;; Producs are : record defs, parser, meta parser, lang
 ;;; may need to use meta define meta-parser.
-;;; 
+;;;
 ;;; TODO:
 ;;;   - add facility to allow for functional transformations while unparsing
 ;;;     (instead of just the pattern ones available now).  this should be
@@ -44,15 +44,17 @@
     (let ([os (foldl (lambda (o- os)
                        (let-values ([(o os) (partition (lambda (o) (o=? o- o)) os)])
                          (when (null? o)
-                           (raise-syntax-error 'define-language
-                             (format "unrecognized ~s in subtract" what)
-                             x (unpack o-)))
+                           (let ([all-os (map (lambda (x) (syntax->datum (unpack x))) os)])
+                             (raise-syntax-error 'define-language
+                                                 (format "unrecognized ~s '~s' in subtract, expected one of: ~a"
+                                                         what (syntax->datum (unpack o-)) all-os)
+                                                 x (unpack o-))))
                          os))
-                os os-)])
+                     os os-)])
       (if maybe-fresh-o
           (map maybe-fresh-o os)
           os)))
-  
+
   (define freshen-tspecs (freshen-objects tspec=? #f tspec-type 'terminal))
   (define freshen-alts (freshen-objects alt=? fresh-alt alt-syn 'production))
 
@@ -60,26 +62,30 @@
     (foldl (lambda (o+ os)
              (cond
                [(memf (lambda (x) (o=? o+ x)) os) =>
-                (lambda (os)
-                  (raise-syntax-error 'define-language
-                    (format "duplicate ~s in add" what)
-                    x (unpack o+) (list (unpack (car os)))))]
+                                                  (lambda (os)
+                                                    (raise-syntax-error 'define-language
+                                                                        (format "duplicate ~s '~s' in add, already present in language"
+                                                                                what (syntax->datum (unpack o+)))
+                                                                        x (unpack o+)))]
                [else (cons o+ os)]))
-      os os+))
-  
+           os os+))
+
   (define add-tspecs (add-objects tspec=? tspec-type 'terminal))
   (define add-alts (add-objects alt=? alt-syn 'production))
-  
+
   (define freshen-ntspecs
     (lambda (ntspecs ntspecs-)
       (cond
         [(and (null? ntspecs) (not (null? ntspecs-)))
          (if (> (length ntspecs-) 1)
              (raise-syntax-error 'define-language
-                                 "multiple unrecognized ntspecs, including"
+                                 (format "multiple unrecognized ntspecs in subtract, including '~s'"
+                                         (syntax->datum (ntspec-name (car ntspecs-))))
                                  (ntspec-name (car ntspecs-)))
              (raise-syntax-error 'define-language
-                                 "unrecognized ntspec" (ntspec-name (car ntspecs-))))]
+                                 (format "unrecognized ntspec '~s' in subtract"
+                                         (syntax->datum (ntspec-name (car ntspecs-))))
+                                 (ntspec-name (car ntspecs-))))]
         [(null? ntspecs) '()]
         [else
          (let g ([ntspecs- ntspecs-] [ntspec (car ntspecs)] [remaining '()])
@@ -93,7 +99,7 @@
                            (cons (fresh-ntspec ntspec alts)
                                  (freshen-ntspecs (cdr ntspecs) (append remaining (cdr ntspecs-))))))
                      (g (cdr ntspecs-) ntspec (cons (car ntspecs-) remaining))))))])))
-  
+
   (define add-ntspecs
     (lambda (ntspecs ntspecs+)
       (cond
@@ -108,7 +114,7 @@
                        (cons (fresh-ntspec ntspec alts)
                              (add-ntspecs (cdr ntspecs) (append remaining (cdr ntspecs+)))))
                      (g (cdr ntspecs+) ntspec (cons (car ntspecs+) remaining))))))])))
-  
+
   (define partition-terms
     (lambda (id terms)
       (let loop ([terms terms] [terms+ '()] [terms- '()])
@@ -129,7 +135,7 @@
                                #'x)]
           [x (raise-syntax-error 'define-language
                                  "unrecognized terminal extension list" #'x)]))))
-  
+
   (define partition-ntspecs
     (lambda (ntspecs terminal-meta*)
       (let f ([ntspecs ntspecs] [ntspecs+ '()] [ntspecs- '()])
@@ -160,7 +166,7 @@
                                        #'x)]
                   [x (raise-syntax-error 'define-language
                                          "unrecognzied production extension list" #'x)])))))))
-  
+
   (define (parse-alts alt* terminal-meta*)
     (define (make-alt syn pretty pretty-procedure?)
       (syntax-case syn ()
@@ -195,7 +201,7 @@
         [(syn . alt**)
          (cons (make-alt (syntax/loc alt* syn) #f #f) (f (syntax/loc alt* alt**)))]
         [x (raise-syntax-error 'define-language "unrecognized production list" #'x)])))
-  
+
   (define parse-terms
     (lambda (id terms)
       (define (build-tspec t mvs maybe-handler)
@@ -211,12 +217,12 @@
           [((t (tmeta* ...)) => handler . terms)
            (loop #'terms
                  (cons (build-tspec #'t #'(tmeta* ...) #'handler) tspecs))]
-          [((t (tmeta* ...)) . terms) 
+          [((t (tmeta* ...)) . terms)
            (loop #'terms
                  (cons (build-tspec #'t #'(tmeta* ...) #f) tspecs))]
           [(x . terms) (raise-syntax-error 'define-language "unrecognized terminal syntax" #'x)]
           [x (raise-syntax-error 'define-language "unrecognized terminals list" #'x)]))))
-  
+
   (define parse-language-and-finish
     (lambda (name ldef)
       (define parse-clauses
@@ -224,7 +230,7 @@
           (let f ([ldef ldef] [base-lang #f] [found-entry #f]
                               [entry-ntspec #f] [first-ntspec #f] [terms '()] [ntspecs '()])
             (syntax-parse ldef
-                #:literals (extends entry terminals)
+              #:literals (extends entry terminals)
               [() (values base-lang (if base-lang entry-ntspec (or entry-ntspec first-ntspec)) terms (reverse ntspecs))]
               [((extends ?L:id) . rest)
                (when base-lang
@@ -239,7 +245,7 @@
                                      #'(entry ?P) entry-ntspec))
                (f #'rest base-lang #t #'?P first-ntspec terms ntspecs)]
               [((terminals ?t* ...) . rest)
-               (f #'rest base-lang found-entry entry-ntspec first-ntspec 
+               (f #'rest base-lang found-entry entry-ntspec first-ntspec
                   (append terms #'(?t* ...)) ntspecs)]
               [((ntspec:id (meta*:id ...) a a* ...) . rest)
                (f #'rest base-lang found-entry
@@ -284,7 +290,7 @@
                                             (make-ntspec (car ntspec) (cadr ntspec)
                                                          (parse-alts (cddr ntspec) terminal-meta*)))
                                           ntspecs))))))))
-  
+
   (define (escape-pattern x)
     (syntax-case x (...)
       [... (syntax/loc x (... (... ...)))]
@@ -335,7 +341,7 @@
                                                  #`($make-pair-alt
                                                     #'#,(escape-pattern (alt-syn alt))
                                                     #,(let ([t (alt-pretty alt)])
-                                                        (and t 
+                                                        (and t
                                                              (if (alt-pretty-procedure? alt)
                                                                  #`#'#,(alt-pretty alt)
                                                                  #`#'#,(escape-pattern
@@ -361,7 +367,7 @@
                                                  #`(make-terminal-alt
                                                     #'#,(escape-pattern (alt-syn alt))
                                                     #,(let ([t (alt-pretty alt)])
-                                                        (and t 
+                                                        (and t
                                                              (if (alt-pretty-procedure? alt)
                                                                  #`#'#,(alt-pretty alt)
                                                                  #`#'#,(escape-pattern
@@ -372,7 +378,7 @@
                                                  #`(make-nonterminal-alt
                                                     #'#,(escape-pattern (alt-syn alt))
                                                     #,(let ([t (alt-pretty alt)])
-                                                        (and t 
+                                                        (and t
                                                              (if (alt-pretty-procedure? alt)
                                                                  #`#'#,(alt-pretty alt)
                                                                  #`#'#,(escape-pattern
@@ -395,9 +401,9 @@
             ;(define-property #,lang meta-parser-property meta-parser)
             (define-unparser unparser-name #,lang)
             (set! unparser-box
-              (make-constructor-style-printer
-               (lambda (x) (format "language:~a" '#,lang))
-               (lambda (lang) (list (unparser-name lang)))))
+                  (make-constructor-style-printer
+                   (lambda (x) (format "language:~a" '#,lang))
+                   (lambda (lang) (list (unparser-name lang)))))
             (void)))
       (syntax-property stx
                        'mouse-over-tooltips
@@ -430,7 +436,7 @@
           (alt-syn a)))
     (define (ntspec->s-expression p)
       #`(#,(ntspec-name p) #,(ntspec-meta-vars p)
-          #,@(map alt->s-expression (ntspec-alts p))))
+                           #,@(map alt->s-expression (ntspec-alts p))))
     (let ([lang-pair (lookup-language 'language->s-expression
                                       "unrecognized language name" lang)])
       (let ([lang (car lang-pair)])

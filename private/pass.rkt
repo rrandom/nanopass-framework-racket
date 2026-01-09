@@ -776,16 +776,20 @@
                                                                               (raise-syntax-error
                                                                                (maybe-syntax->datum (pass-desc-name pass-desc))
                                                                                (format
-                                                                                "expected meta-variable for nonterminal ~s, but got"
-                                                                                (if (syntax? itype) (maybe-syntax->datum itype) itype))
+                                                                                "type mismatch for meta-variable '~s'; expected nonterminal '~s', but meta-variable has type '~s'"
+                                                                                (syntax->datum id)
+                                                                                (if (syntax? itype) (maybe-syntax->datum itype) itype)
+                                                                                (maybe-syntax->datum (spec-type spec)))
                                                                                id)))]
                   [(term-id->tspec? itype (language-tspecs ilang)) =>
                                                                    (lambda (tspec)
                                                                      (raise-syntax-error
                                                                       (maybe-syntax->datum (pass-desc-name pass-desc))
                                                                       (format
-                                                                       "expected meta-variable for terminal ~s, but got"
-                                                                       (if (syntax? itype) (maybe-syntax->datum itype) itype))
+                                                                       "type mismatch for meta-variable '~s'; expected terminal '~s', but meta-variable has type '~s'"
+                                                                       (syntax->datum id)
+                                                                       (if (syntax? itype) (maybe-syntax->datum itype) itype)
+                                                                       (maybe-syntax->datum (spec-type spec)))
                                                                       id))]
                   [else (raise-syntax-error
                          (maybe-syntax->datum (pass-desc-name pass-desc))
@@ -1487,7 +1491,10 @@
                            (if (or (nonterm-id->ntspec? #'id (language-ntspecs ilang))
                                    (term-id->tspec? #'id (language-tspecs ilang)))
                                #'id
-                               (squawk "unrecognized input non-terminal" #'id))
+                               (let ([all-ntspecs (map (lambda (x) (syntax->datum (ntspec-name x))) (language-ntspecs ilang))])
+                                 (squawk (format "unrecognized input non-terminal '~s' for language '~s', expected one of: ~a"
+                                                 (syntax->datum #'id) (language-name ilang) all-ntspecs)
+                                         #'id)))
                            (squawk "specified input non-terminal without input language" #'id))]
                       [_ (squawk "invalid input type specifier" #'itype)])])
                (let ([arg* (stx->list #'(arg ...))])
@@ -1519,7 +1526,10 @@
                                  (if (or (nonterm-id->ntspec? #'id (language-ntspecs olang))
                                          (term-id->tspec? #'id (language-tspecs olang)))
                                      #'id
-                                     (squawk "unrecognized output non-terminal" #'id))
+                                     (let ([all-ntspecs (map (lambda (x) (syntax->datum (ntspec-name x))) (language-ntspecs olang))])
+                                       (squawk (format "unrecognized output non-terminal '~s' for language '~s', expected one of: ~a"
+                                                       (syntax->datum #'id) (language-name olang) all-ntspecs)
+                                               #'id)))
                                  (squawk "specified output non-terminal without output language" #'id))]
                             [_ (squawk "invalid output-type specifier" #'otype)])])
                      (make-pdesc #'proc-name maybe-itype fml* init*
@@ -1617,9 +1627,17 @@
         (let-values ([(maybe-ilang maybe-imeta-parser) (lookup-lang pass-name maybe-iname)]
                      [(maybe-olang maybe-ometa-parser) (lookup-lang pass-name maybe-oname)])
           (when (and maybe-itype (not (nonterm-id->ntspec? maybe-itype (language-ntspecs maybe-ilang))))
-            (raise-syntax-error who "unrecognized pass input non-terminal" pass-name maybe-itype))
+            (let ([all-ntspecs (map (lambda (x) (syntax->datum (ntspec-name x))) (language-ntspecs maybe-ilang))])
+              (raise-syntax-error who
+                                  (format "unrecognized pass input non-terminal '~s' for language '~s', expected one of: ~a"
+                                          (syntax->datum maybe-itype) (syntax->datum maybe-iname) all-ntspecs)
+                                  pass-name maybe-itype)))
           (when (and maybe-otype (not (nonterm-id->ntspec? maybe-otype (language-ntspecs maybe-olang))))
-            (raise-syntax-error who "unrecognized pass output non-terminal" pass-name maybe-otype))
+            (let ([all-ntspecs (map (lambda (x) (syntax->datum (ntspec-name x))) (language-ntspecs maybe-olang))])
+              (raise-syntax-error who
+                                  (format "unrecognized pass output non-terminal '~s' for language '~s', expected one of: ~a"
+                                          (syntax->datum maybe-otype) (syntax->datum maybe-oname) all-ntspecs)
+                                  pass-name maybe-otype)))
           (let* ([pdesc* (map (parse-proc pass-name maybe-ilang maybe-olang) p*)]
                  [pass-desc (make-pass-desc pass-name maybe-ilang maybe-olang pdesc*)]
                  [body (build-checked-body pass-desc (and (pair? fml*) (car fml*))
