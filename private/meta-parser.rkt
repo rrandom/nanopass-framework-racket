@@ -27,6 +27,9 @@
                  #'(a . d))]
       [() #'()]
       [id  (identifier? #'id) #'id]))
+  (define (get-all-metas tspecs ntspecs)
+    (append (apply append (map (lambda (x) (map syntax->datum (tspec-meta-vars x))) tspecs))
+            (apply append (map (lambda (x) (map syntax->datum (ntspec-meta-vars x))) ntspecs))))
   (define ntspec-meta-parsers (make-hasheq))
   (define (make-meta-parse-proc desc tspecs ntspecs ntspec lang-name cata?)
     (define (parse-field m level maybe?)
@@ -54,8 +57,13 @@
                                                         #'(nano-dots-x x)))
                                    #,(f (- level 1) #'x)))
                              #,x)))))]
-        [else (raise-syntax-error 'meta-parser "unrecognized meta variable"
-                                  (language-name desc) m)]))
+        [else (let ([all-metas (get-all-metas tspecs ntspecs)])
+                (raise-syntax-error 'meta-parser
+                                    (format "unrecognized meta variable '~s' for non-terminal '~s' in language '~s', expected one of: ~a"
+                                            (syntax->datum m) (syntax->datum (ntspec-name ntspec)) (syntax->datum (language-name desc))
+                                            all-metas)
+                                    (language-name desc) m))]
+        ))
     (define make-term-clause
       (lambda (x)
         (lambda (alt)
@@ -81,7 +89,7 @@
               (make-nonterminal-alt
                #'#,(escape-pattern (alt-syn alt))
                #,(let ([t (alt-pretty alt)])
-                   (and t 
+                   (and t
                         (if (alt-pretty-procedure? alt)
                             #`#'#,(alt-pretty alt)
                             #`#'#,(escape-pattern (alt-pretty alt)))))
@@ -91,11 +99,15 @@
     (define ((make-nonterm-clause x maybe?) alt)
       (let ([spec (meta-name->ntspec (alt-syn alt) ntspecs)])
         (unless spec
-          (raise-syntax-error 'meta-parser "unrecognized meta variable"
-                              (language-name desc) (alt-syn alt)))
+          (let ([all-metas (get-all-metas tspecs ntspecs)])
+            (raise-syntax-error 'meta-parser
+                                (format "unrecognized meta variable '~s' for non-terminal '~s' in language '~s', expected one of: ~a"
+                                        (syntax->datum (alt-syn alt)) (syntax->datum (ntspec-name ntspec)) (syntax->datum (language-name desc))
+                                        all-metas)
+                                (language-name desc) (alt-syn alt))))
         (with-syntax ([proc-name (hash-ref ntspec-meta-parsers spec)])
           #`(proc-name #,x #f nested? #,maybe?))))
-    
+
     (define ((make-pair-clause stx first-stx rest-stx) alt)
       (make-list-clause stx #f first-stx rest-stx alt))
     (define ((make-null-clause stx) alt)
@@ -137,7 +149,7 @@
                            ($make-pair-alt
                             #'#,(escape-pattern (alt-syn alt))
                             #,(let ([t (alt-pretty alt)])
-                                (and t 
+                                (and t
                                      (if (alt-pretty-procedure? alt)
                                          #`#'#,(alt-pretty alt)
                                          #`#'#,(escape-pattern (alt-pretty alt)))))
@@ -157,7 +169,7 @@
                                      #`(list #,@(map (lambda (id) #`#'#,id) t))))
                             #'#,(pair-alt-name alt))
                            (list parsed-field ...)))
-                       ls)])))))))
+                        ls)])))))))
     (define (separate-syn ls)
       (let f ([ls ls])
         (cond
@@ -178,7 +190,7 @@
     (define-values (pair-alt* pair-imp-alt* term-alt* nonterm-imp-alt* nonterm-nonimp-alt*)
       (separate-syn (ntspec-alts ntspec)))
     #;(pretty-print
-     (list 'inf pair-alt* pair-imp-alt* term-alt* nonterm-imp-alt* nonterm-nonimp-alt*))
+       (list 'inf pair-alt* pair-imp-alt* term-alt* nonterm-imp-alt* nonterm-nonimp-alt*))
     #`(lambda (stx error? nested? maybe?)
         (or (syntax-case stx ()
               [(unquote id)
@@ -250,7 +262,7 @@
                                               (syntax->source-info stx)
                                               #f)]
                              [base-msg (format "unrecognized nonterminal passed to meta parser ~s"
-                                              ntspec-name)])
+                                               ntspec-name)])
                         (if source-info
                             (error '#,lang-name "~a\n  at ~a" base-msg source-info)
                             (error '#,lang-name "~a" base-msg)))]))))))))
@@ -386,12 +398,14 @@
      (with-handlers ([exn:fail:syntax?
                       (lambda (x) (raise x))]
                      [exn:fail?
-                      (lambda (x) (raise-syntax-error
-                                   #f
-                                   (format "unrecognized nonterminal in language ~a"
-                                           (syntax->datum (language-name omrec)))
-                                   pass-name
-                                   ntname))])
+                      (lambda (x) (let ([lang-name (syntax->datum (language-name omrec))])
+                                    (raise-syntax-error
+                                     #f
+                                     (format "unrecognized nonterminal '~s' in language '~s'"
+                                             (syntax->datum ntname) lang-name)
+                                     pass-name
+                                     ntname)))]
+                     )
        ;(printf "stuff: ~a~n~n" #'stuff)
        (output-records->syntax pass-name ntname omrec ometa-parser
                                (ometa-parser (syntax->datum ntname) (syntax/loc x stuff) #f)))

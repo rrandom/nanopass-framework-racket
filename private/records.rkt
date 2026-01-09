@@ -198,6 +198,16 @@
         metas (tspec-meta-vars tspec)))
      '() tspecs)))
 
+(define extract-ntspec-metas
+  (lambda (ntspecs)
+    (foldl
+     (lambda (ntspec metas)
+       (foldl
+        (lambda (mv metas)
+          (cons (syntax->datum mv) metas))
+        metas (ntspec-meta-vars ntspec)))
+     '() ntspecs)))
+
 (define-struct ntspec
   (name meta-vars alts
         (tag #:mutable)
@@ -323,9 +333,13 @@
         (findf (lambda (tspec)
                  (memq name (map maybe-syntax->datum (tspec-meta-vars tspec))))
                (language-tspecs lang))
-        (raise-syntax-error #f (format "not a metavariable in language ~a"
-                                       (syntax->datum (language-name lang)))
-                            m))))
+        (let* ([all-metas (append (extract-terminal-metas (language-tspecs lang))
+                                  (extract-ntspec-metas (language-ntspecs lang)))]
+               [msg (format "unrecognized meta-variable '~s' in language '~s', expected one of: ~a"
+                            (maybe-syntax->datum m)
+                            (maybe-syntax->datum (language-name lang))
+                            all-metas)])
+          (raise-syntax-error #f msg m)))))
 
 (define (nonterminal-meta? m ntspec*)
   (let ([m (meta-var->raw-meta-var (maybe-syntax->datum m))])
